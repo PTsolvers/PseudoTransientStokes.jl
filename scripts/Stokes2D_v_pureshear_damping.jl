@@ -46,10 +46,13 @@ damping = 2        # 1: damping applied on momentum equation, 2: damping applied
     Rog     = zeros(Dat, nx  ,ny  )
     Mus     = μ0*ones(Dat, nx, ny )
     # new
+    Kdt     = zeros(Dat, nx  ,ny  )
+    Gdt     = zeros(Dat, nx  ,ny  )
     dVx     = zeros(Dat, nx-1,ny  )
     dVy     = zeros(Dat, nx  ,ny-1)
-    dtau_rhox = zeros(Dat, nx-1,ny  )
-    dtau_rhoy = zeros(Dat, nx  ,ny-1)
+    dt_rho  = zeros(Dat, nx  ,ny  )
+    dt_rhox = zeros(Dat, nx-1,ny  )
+    dt_rhoy = zeros(Dat, nx  ,ny-1)
     # Initialisation
     xc, yc  = LinRange(dx/2, Lx-dx/2, nx), LinRange(dy/2, Ly-dy/2, ny)
     xc, yc  = LinRange(dx/2, Lx-dx/2, nx), LinRange(dy/2, Ly-dy/2, ny)
@@ -61,16 +64,16 @@ damping = 2        # 1: damping applied on momentum equation, 2: damping applied
     Vx     .=   εbg.*Xvx
     Vy     .= .-εbg.*Yvy
     # Ludo's trick
-    nludo     = 5 
-    Mus0      = zeros(size(Mus)) 
-    Mus0     .= Mus
-    Musm      = Mus0
-    for iloc=1:nludo
-        Musm      = Mus0
+    nloc    = 1
+    Musm    = zeros(size(Mus))
+    Mus0    = zeros(size(Mus))
+    Musm   .= Mus
+    Mus0   .= Mus
+    for iloc=1:nloc
         Musm[2:end-1,2:end-1] = max.( max.( max.(Mus0[1:end-2,2:end-1] , Mus0[3:end  ,2:end-1]) , Mus0[2:end-1,2:end-1] ) , max.(Mus0[2:end-1,1:end-2] , Mus[2:end-1,3:end  ]) );
-        Musm[1,:] = Musm[2,:]; Musm[end,:] = Musm[end-1,:];
-        Musm[:,1] = Musm[:,2]; Musm[:,end] = Musm[:,end-1];
-        Mus0 = Musm;
+        Musm[1,:] = Musm[2,:]; Musm[end,:] = Musm[end-1,:]
+        Musm[:,1] = Musm[:,2]; Musm[:,end] = Musm[:,end-1]
+        Mus0 .= Musm
     end
     if damping==1
         dtVx   .= min(dx,dy)^2.0./av_xa(Musm)./4.1./2.0
@@ -78,13 +81,13 @@ damping = 2        # 1: damping applied on momentum equation, 2: damping applied
         dtPt   .= 4.1*Musm/max(nx,ny)/Ptsc
     end
     if damping==2
-        sc1       = 1.0 
-        cfl       = 1.0 /(2.0 + 3.0 *log10(μ0/μi));
-        Kdt       = sc1.*2*pi.*dx*cfl./Lx.*Musm
-        Gdt       =      4*pi.*dx*cfl./Lx.*Musm
-        dtau_rho  = (dx*cfl).^2 ./ ( Kdt .+ Gdt./(1.0 .+ Gdt./Musm ) )
-        dtau_rhox = av_xa(dtau_rho)
-        dtau_rhoy = av_ya(dtau_rho)
+        sc1      = 1.0 
+        cfl      = 1.0 /(2.0 + 3.0 *log10(μ0/μi))
+        Kdt     .= sc1.*2*pi.*dx*cfl./Lx.*Musm
+        Gdt     .=      4*pi.*dx*cfl./Lx.*Musm
+        dt_rho  .= (dx*cfl).^2 ./ ( Kdt .+ Gdt./(1.0 .+ Gdt./Musm ) )
+        dt_rhox .= av_xa(dt_rho)
+        dt_rhoy .= av_ya(dt_rho)
     end
     # Time loop
     for it = 1:nt
@@ -124,8 +127,8 @@ damping = 2        # 1: damping applied on momentum equation, 2: damping applied
                 dVy   .= dtVy.*dVydt
             end
             if damping==2
-                dVx   .= dtau_rhox .* Rx
-                dVy   .= dtau_rhoy .* Ry
+                dVx   .= dt_rhox .* Rx
+                dVy   .= dt_rhoy .* Ry
             end
             Vx[2:end-1,:] .= Vx[2:end-1,:] .+ dVx
             Vy[:,2:end-1] .= Vy[:,2:end-1] .+ dVy
