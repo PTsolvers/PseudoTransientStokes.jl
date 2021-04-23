@@ -1,7 +1,7 @@
 # Initialisation
 using Plots, Printf, Statistics, LinearAlgebra
 Dat     = Float64  # Precision (double=Float64 or single=Float32)
-damping = 2        # 1: damping applied on momentum equation, 2: damping applied on fluxes
+damping = 1        # 1: damping applied on momentum equation, 2: damping applied on fluxes
 # Macros
 @views    av(A) = 0.25*(A[1:end-1,1:end-1].+A[2:end,1:end-1].+A[1:end-1,2:end].+A[2:end,2:end])
 @views av_xa(A) =  0.5*(A[1:end-1,:].+A[2:end,:])
@@ -16,10 +16,10 @@ damping = 2        # 1: damping applied on momentum equation, 2: damping applied
     εbg     = 1.0       # background strain-rate
     # Numerics
     nt      = 1         # number of time steps
-    nx, ny  = 63, 63    # numerical grid resolution
+    nx, ny  = 127, 127    # numerical grid resolution
     Vdmp    = 4.0       # convergence acceleration (damping)
     Ptsc    = 8.0       # iterative time step limiter
-    tolnl   = 1e-6      # nonlinear tolerence
+    tolnl   = 1e-10      # nonlinear tolerence
     iterMax = 1e5       # max number of iters
     nout    = 200       # check frequency
     # Preprocessing
@@ -138,7 +138,7 @@ damping = 2        # 1: damping applied on momentum equation, 2: damping applied
                 norm_Rx = norm(Rx)/length(Rx); norm_Ry = norm(Ry)/length(Ry); norm_∇V = norm(∇V)/length(∇V)
                 err = maximum([norm_Rx, norm_Ry, norm_∇V])
                 push!(err_evo1, err)
-                @printf("iter = %d, err = %1.3e norm[Rx=%1.3e, Ry=%1.3e, ∇V=%1.3e] \n", iter, err, norm_Rx, norm_Ry, norm_∇V)
+                @printf("iter/nx = %d, err = %1.3e norm[Rx=%1.3e, Ry=%1.3e, ∇V=%1.3e] \n", iter/nx, err, norm_Rx, norm_Ry, norm_∇V)
             end
             iter+=1;
         end
