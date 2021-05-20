@@ -16,15 +16,21 @@ Dat = Float64  # Precision (double=Float64 or single=Float32)
     # Numerics
     nt      = 1         # number of time steps
     nx, ny  = 127, 127  # numerical grid resolution
-    Vdmp    = 4.0       # convergence acceleration (damping)
-    Vsc     = 2.0       # iterative time step limiter
-    Ptsc    = 4.0       # iterative time step limiter
+    # dmp     = 0.4
+    # cfl     = 1.0/(2.0 + 3.0*log10(μ0/μi))
+
+    cfl     = 1/4.1
+    K_G     = 1/8
+    R_e     = 3/8*sqrt(35)*pi/(K_G + 4/3)
+
     nloc    = 1         # number of local max
-    tolnl   = 1e-10      # nonlinear tolerence
+    tolnl   = 1e-10     # nonlinear tolerence
     iterMax = 1e5       # max number of iters
     nout    = 200       # check frequency
     # Preprocessing
     dx, dy  = Lx/nx, Ly/ny
+    Vpdt    = dx*cfl
+    # cfl     = 0.5*dx#1.0/(2.0 + 0.0*log10(μ0/μi))
     # Array initialisation
     Pt      = zeros(Dat, nx  ,ny  )
     ∇V      = zeros(Dat, nx  ,ny  )
@@ -36,20 +42,26 @@ Dat = Float64  # Precision (double=Float64 or single=Float32)
     Txx     = zeros(Dat, nx  ,ny  )
     Tyy     = zeros(Dat, nx  ,ny  )
     Txy     = zeros(Dat, nx+1,ny+1)
+    Txx2    = zeros(Dat, nx  ,ny  )
+    Tyy2    = zeros(Dat, nx  ,ny  )
+    Txy2    = zeros(Dat, nx+1,ny+1)
     Tii     = zeros(Dat, nx  ,ny  )
     Rx      = zeros(Dat, nx-1,ny  )
     Ry      = zeros(Dat, nx  ,ny-1)
-    dVxdt   = zeros(Dat, nx-1,ny  )
-    dVydt   = zeros(Dat, nx  ,ny-1)
-    dtVx    = zeros(Dat, nx-1,ny  )
-    dtVy    = zeros(Dat, nx  ,ny-1)
-    dtPt    = zeros(Dat, nx  ,ny  )
     Rog     = zeros(Dat, nx  ,ny  )
-    Mus     = μ0*ones(Dat, nx, ny)
+    Mus     = μ0*ones(Dat, nx, ny )
+    # new
+    Kdt     = zeros(Dat, nx  ,ny  )
+    Gdt     = zeros(Dat, nx  ,ny  )
+    dVx     = zeros(Dat, nx-1,ny  )
+    dVy     = zeros(Dat, nx  ,ny-1)
+    dt_rho  = zeros(Dat, nx  ,ny  )
+    dt_rhox = zeros(Dat, nx-1,ny  )
+    dt_rhoy = zeros(Dat, nx  ,ny-1)
     # Initialisation
     xc, yc  = LinRange(dx/2, Lx-dx/2, nx), LinRange(dy/2, Ly-dy/2, ny)
     xc, yc  = LinRange(dx/2, Lx-dx/2, nx), LinRange(dy/2, Ly-dy/2, ny)
-    xv, yv  = LinRange(0.0, Lx, nx+1), LinRange(0.0, Ly, ny+1)
+    xv, yv  = LinRange(0.0, Lx, nx+1)    , LinRange(0.0, Ly, ny+1)
     (Xvx,Yvx) = ([x for x=xv,y=yc], [y for x=xv,y=yc])
     (Xvy,Yvy) = ([x for x=xc,y=yv], [y for x=xc,y=yv])
     rad       = (xc.-Lx./2).^2 .+ (yc'.-Ly./2).^2
@@ -64,35 +76,45 @@ Dat = Float64  # Precision (double=Float64 or single=Float32)
         Musm[1,:] = Musm[2,:]; Musm[end,:] = Musm[end-1,:]
         Musm[:,1] = Musm[:,2]; Musm[:,end] = Musm[:,end-1]
     end
-    dtVx   .= min(dx,dy)^2.0./av_xa(Musm)./4.1/Vsc
-    dtVy   .= min(dx,dy)^2.0./av_ya(Musm)./4.1/Vsc
-    dtPt   .= 4.1*Musm/max(nx,ny)/Ptsc
+    # Kdt     .= dmp.*2*pi.*dx*cfl./Lx.*Musm
+    # Gdt     .=      4*pi.*dx*cfl./Lx.*Musm
+    # dt_rho  .= (dx*cfl)^2 ./ ( Kdt .+ Gdt./(1.0 .+ Gdt./Musm ) )
+
+    Gdt     .= R_e*Vpdt/Lx*Musm
+    Kdt     .= Gdt*K_G*1
+    dt_rho  .= (Kdt .+ 4/3*Gdt)/Vpdt^2
+
+    dt_rhox .= av_xa(dt_rho)
+    dt_rhoy .= av_ya(dt_rho)
     # Time loop
     for it = 1:nt
         iter=1; err=2*tolnl; err_evo1=[]
         while (err>tolnl && iter<=iterMax)
             # divergence - pressure
             ∇V     .= diff(Vx, dims=1)./dx .+ diff(Vy, dims=2)./dy
-            Pt     .= Pt .- dtPt.*∇V
+            Pt     .= Pt .-  Kdt.*∇V
             # strain rates
             Exx    .= diff(Vx, dims=1)./dx .- 1.0/3.0*∇V
             Eyy    .= diff(Vy, dims=2)./dy .- 1.0/3.0*∇V
             Exy_in .= 0.5.*(diff(Vx[2:end-1,:], dims=2)./dy .+ diff(Vy[:,2:end-1], dims=1)./dx)
             # stresses
-            Txx    .= 2.0.*Mus.*Exx
-            Tyy    .= 2.0.*Mus.*Eyy
-            Txy[2:end-1,2:end-1] .= 2.0.*av(Mus).*Exy_in
+            Txx    .= (Txx .+ 2.0.*Gdt.*Exx) ./ (1.0 .+ Gdt./Mus)
+            Tyy    .= (Tyy .+ 2.0.*Gdt.*Eyy) ./ (1.0 .+ Gdt./Mus)
+            Txy[2:end-1,2:end-1] .= (Txy[2:end-1,2:end-1] .+ 2.0.*av(Gdt).*Exy_in) ./ (1.0 .+ av(Gdt)./av(Mus))
             Tii    .= sqrt.(0.5*(Txx.^2 .+ Tyy.^2) .+ av(Txy).^2)
             # velocities
-            Rx     .= .-diff(Pt, dims=1)./dx .+ diff(Txx, dims=1)./dx .+ diff(Txy[2:end-1,:], dims=2)./dy
-            Ry     .= .-diff(Pt, dims=2)./dy .+ diff(Tyy, dims=2)./dy .+ diff(Txy[:,2:end-1], dims=1)./dx .+ av_ya(Rog)
-            dVxdt  .= dVxdt.*(1-Vdmp/nx) .+ Rx
-            dVydt  .= dVydt.*(1-Vdmp/ny) .+ Ry
-            Vx[2:end-1,:] .= Vx[2:end-1,:] .+ dVxdt.*dtVx
-            Vy[:,2:end-1] .= Vy[:,2:end-1] .+ dVydt.*dtVy
+            dVx    .= dt_rhox .* ( .-diff(Pt, dims=1)./dx .+ diff(Txx, dims=1)./dx .+ diff(Txy[2:end-1,:], dims=2)./dy )
+            dVy    .= dt_rhoy .* ( .-diff(Pt, dims=2)./dy .+ diff(Tyy, dims=2)./dy .+ diff(Txy[:,2:end-1], dims=1)./dx .+ av_ya(Rog) )
+            Vx[2:end-1,:] .= Vx[2:end-1,:] .+ dVx
+            Vy[:,2:end-1] .= Vy[:,2:end-1] .+ dVy
             # convergence check
             if mod(iter, nout)==0
                 global max_Rx, max_Ry, max_divV
+                Txx2  .= 2.0.*Mus.*Exx
+                Tyy2  .= 2.0.*Mus.*Eyy
+                Txy2[2:end-1,2:end-1] .= 2.0.*av(Mus).*Exy_in
+                Rx    .= .-diff(Pt, dims=1)./dx .+ diff(Txx2, dims=1)./dx .+ diff(Txy2[2:end-1,:], dims=2)./dy
+                Ry    .= .-diff(Pt, dims=2)./dy .+ diff(Tyy2, dims=2)./dy .+ diff(Txy2[:,2:end-1], dims=1)./dx .+ av_ya(Rog)
                 norm_Rx = norm(Rx)/length(Rx); norm_Ry = norm(Ry)/length(Ry); norm_∇V = norm(∇V)/length(∇V)
                 err = maximum([norm_Rx, norm_Ry, norm_∇V])
                 push!(err_evo1, err)
