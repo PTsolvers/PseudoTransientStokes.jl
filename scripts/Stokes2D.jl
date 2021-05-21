@@ -18,10 +18,10 @@ end
     return
 end
 
-@parallel function compute_timesteps!(dτVx::Data.Array, dτVy::Data.Array, dτPt::Data.Array, Musτ::Data.Array, Vsc::Data.Number, Ptsc::Data.Number, min_dxy2::Data.Number, max_nxy::Int)
-    @all(dτVx) = 1.0/4.1/Vsc*min_dxy2/@av_xi(Musτ)
-    @all(dτVy) = 1.0/4.1/Vsc*min_dxy2/@av_yi(Musτ)
-    @all(dτPt) = 4.1/Ptsc/max_nxy*@all(Musτ)
+@parallel function compute_timesteps!(dτVx::Data.Array, dτVy::Data.Array, dτPt::Data.Array, Musτ::Data.Array, Vsc::Data.Number, Ptsc::Data.Number, min_dxy2::Data.Number, β_n::Data.Number, max_nxy::Int)
+    @all(dτVx) = 1.0/4.1/Vsc*min_dxy2/@av_xi(Musτ)/(1.0+β_n)
+    @all(dτVy) = 1.0/4.1/Vsc*min_dxy2/@av_yi(Musτ)/(1.0+β_n)
+    @all(dτPt) = 4.1*(1.0+β_n)/Ptsc/max_nxy*@all(Musτ)
     return
 end
 
@@ -31,9 +31,9 @@ end
     return
 end
 
-@parallel function compute_τ!(∇V::Data.Array, τxx::Data.Array, τyy::Data.Array, τxy::Data.Array, Vx::Data.Array, Vy::Data.Array, Mus::Data.Array, dx::Data.Number, dy::Data.Number)
-    @all(τxx) = 2.0*@all(Mus)*(@d_xa(Vx)/dx - 1.0/3.0*@all(∇V))
-    @all(τyy) = 2.0*@all(Mus)*(@d_ya(Vy)/dy - 1.0/3.0*@all(∇V))
+@parallel function compute_τ!(∇V::Data.Array, τxx::Data.Array, τyy::Data.Array, τxy::Data.Array, Vx::Data.Array, Vy::Data.Array, Mus::Data.Array, β_n::Data.Number, dx::Data.Number, dy::Data.Number)
+    @all(τxx) = 2.0*@all(Mus)*(@d_xa(Vx)/dx - 1.0/3.0*@all(∇V) + β_n*@all(∇V))
+    @all(τyy) = 2.0*@all(Mus)*(@d_ya(Vy)/dy - 1.0/3.0*@all(∇V) + β_n*@all(∇V))
     @all(τxy) = 2.0*@av(Mus)*(0.5*(@d_yi(Vx)/dy + @d_xi(Vy)/dx))
     return
 end
@@ -74,8 +74,9 @@ end
     iterMax   = 2e4         # maximum number of pseudo-transient iterations
     nout      = 500         # error checking frequency
     Vdmp      = 4.0         # damping paramter for the momentum equations
+    β_n       = 2.0         # numerical compressibility
     Vsc       = 1.0         # relaxation paramter for the momentum equations pseudo-timesteps limiters
-    Ptsc      = 6.0         # relaxation paramter for the pressure equation pseudo-timestep limiter
+    Ptsc      = 3.0         # relaxation paramter for the pressure equation pseudo-timestep limiter
     ε         = 1e-8        # nonlinear absolute tolerence
     # nx, ny    = 1*128-1, 1*128-1    # numerical grid resolution; should be a mulitple of 32-1 for optimal GPU perf
     # Derived numerics
@@ -119,12 +120,12 @@ end
     @parallel (1:size(Musτ,2)) bc_x!(Musτ)
     @parallel (1:size(Musτ,1)) bc_y!(Musτ)
     # Time loop
-    @parallel compute_timesteps!(dτVx, dτVy, dτPt, Musτ, Vsc, Ptsc, min_dxy2, max_nxy)
+    @parallel compute_timesteps!(dτVx, dτVy, dτPt, Musτ, Vsc, Ptsc, min_dxy2, β_n, max_nxy)
     err=2*ε; iter=0; err_evo1=[]; err_evo2=[]
     while err > ε && iter <= iterMax
         if (iter==11)  global wtime0 = Base.time()  end
         @parallel compute_P!(∇V, Pt, Vx, Vy, dτPt, dx, dy)
-        @parallel compute_τ!(∇V, τxx, τyy, τxy, Vx, Vy, Mus, dx, dy)
+        @parallel compute_τ!(∇V, τxx, τyy, τxy, Vx, Vy, Mus, β_n, dx, dy)
         @parallel compute_dV!(Rx, Ry, dVxdτ, dVydτ, Pt, τxx, τyy, τxy, dampX, dampY, dx, dy)
         @parallel compute_V!(Vx, Vy, dVxdτ, dVydτ, dτVx, dτVy)
         @parallel (1:size(Vx,1)) bc_y!(Vx)
@@ -133,6 +134,7 @@ end
         if iter % nout == 0
             norm_Rx = norm(Rx)/length(Rx); norm_Ry = norm(Ry)/length(Ry); norm_∇V = norm(∇V)/length(∇V)
             err = maximum([norm_Rx, norm_Ry, norm_∇V])
+            if isnan(err) error("NaN") end
             push!(err_evo1, maximum([norm_Rx, norm_Ry, norm_∇V])); push!(err_evo2,iter)
             @printf("Total steps = %d, err = %1.3e [norm_Rx=%1.3e, norm_Ry=%1.3e, norm_∇V=%1.3e] \n", iter, err, norm_Rx, norm_Ry, norm_∇V)
         end
@@ -155,7 +157,7 @@ end
     return nx, ny, iter
 end
 
-# Stokes2D(; nx=127, ny=127, do_viz=true)
+Stokes2D(; nx=255, ny=255, do_viz=true)
 
 @views function runtests_2D(name; do_save=false)
 
@@ -165,9 +167,9 @@ end
     
     for i = 1:length(resol)
 
-        res = resol[i]
+        res = resol[i] - 1
 
-        nxx, nyy, iter = Stokes2D(; nx=res-1, ny=res-1)
+        nxx, nyy, iter = Stokes2D(; nx=res, ny=res)
 
         out[1,i] = nxx
         out[2,i] = nyy
@@ -179,6 +181,7 @@ end
         save("../output/out_$(name).jld", "out", out)
     end
 
+    return
 end
 
-runtests_2D("Stokes_2D"; do_save=true)
+# runtests_2D("Stokes_2D"; do_save=true)
