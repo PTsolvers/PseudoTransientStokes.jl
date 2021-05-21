@@ -9,7 +9,7 @@ end
 using ImplicitGlobalGrid, Plots, Printf, Statistics, LinearAlgebra, JLD
 import MPI
 # Global reductions
-mean_g(A)    = (mean_l = mean(A);  MPI.Allreduce(mean_l, MPI.SUM, MPI.COMM_WORLD)/MPI.Comm_size(MPI.COMM_WORLD))
+mean_g(A)    = (mean_l = mean(A); MPI.Allreduce(mean_l, MPI.SUM, MPI.COMM_WORLD)/MPI.Comm_size(MPI.COMM_WORLD))
 norm_g(A)    = (sum2_l = sum(A.^2); sqrt(MPI.Allreduce(sum2_l, MPI.SUM, MPI.COMM_WORLD)))
 maximum_g(A) = (max_l  = maximum(A); MPI.Allreduce(max_l,  MPI.MAX, MPI.COMM_WORLD))
 # CPU functions
@@ -27,11 +27,11 @@ end
     return
 end
 
-@parallel function compute_timesteps!(dτVx::Data.Array, dτVy::Data.Array, dτVz::Data.Array, dτPt::Data.Array, Mus::Data.Array, Vsc::Data.Number, Ptsc::Data.Number, min_dxyz2::Data.Number, max_nxyz)
-    @all(dτVx) = 1.0/6.1/Vsc*min_dxyz2/@av_xi(Mus)
-    @all(dτVy) = 1.0/6.1/Vsc*min_dxyz2/@av_yi(Mus)
-    @all(dτVz) = 1.0/6.1/Vsc*min_dxyz2/@av_zi(Mus)
-    @all(dτPt) = 6.1/Ptsc/max_nxyz*@all(Mus)
+@parallel function compute_timesteps!(dτVx::Data.Array, dτVy::Data.Array, dτVz::Data.Array, dτPt::Data.Array, Mus::Data.Array, Vsc::Data.Number, Ptsc::Data.Number, min_dxyz2::Data.Number, β_n::Data.Number, max_nxyz)
+    @all(dτVx) = 1.0/6.1/(1.0+β_n)/Vsc*min_dxyz2/@av_xi(Mus)
+    @all(dτVy) = 1.0/6.1/(1.0+β_n)/Vsc*min_dxyz2/@av_yi(Mus)
+    @all(dτVz) = 1.0/6.1/(1.0+β_n)/Vsc*min_dxyz2/@av_zi(Mus)
+    @all(dτPt) = 6.1*(1.0+β_n)/Ptsc/max_nxyz*@all(Mus)
     return
 end
 
@@ -41,10 +41,10 @@ end
     return
 end
 
-@parallel function compute_τ!(∇V::Data.Array, τxx::Data.Array, τyy::Data.Array, τzz::Data.Array, τxy::Data.Array, τxz::Data.Array, τyz::Data.Array, Vx::Data.Array, Vy::Data.Array, Vz::Data.Array, Mus::Data.Array, dx::Data.Number, dy::Data.Number, dz::Data.Number)
-    @all(τxx) = 2.0*@inn_yz(Mus)*(@d_xi(Vx)/dx  - 1.0/3.0*@inn_yz(∇V))
-    @all(τyy) = 2.0*@inn_xz(Mus)*(@d_yi(Vy)/dy  - 1.0/3.0*@inn_xz(∇V))
-    @all(τzz) = 2.0*@inn_xy(Mus)*(@d_zi(Vz)/dz  - 1.0/3.0*@inn_xy(∇V))
+@parallel function compute_τ!(∇V::Data.Array, τxx::Data.Array, τyy::Data.Array, τzz::Data.Array, τxy::Data.Array, τxz::Data.Array, τyz::Data.Array, Vx::Data.Array, Vy::Data.Array, Vz::Data.Array, Mus::Data.Array, β_n::Data.Number, dx::Data.Number, dy::Data.Number, dz::Data.Number)
+    @all(τxx) = 2.0*@inn_yz(Mus)*(@d_xi(Vx)/dx  - 1.0/3.0*@inn_yz(∇V) + β_n*@inn_yz(∇V))
+    @all(τyy) = 2.0*@inn_xz(Mus)*(@d_yi(Vy)/dy  - 1.0/3.0*@inn_xz(∇V) + β_n*@inn_xz(∇V))
+    @all(τzz) = 2.0*@inn_xy(Mus)*(@d_zi(Vz)/dz  - 1.0/3.0*@inn_xy(∇V) + β_n*@inn_xy(∇V))
     @all(τxy) = 2.0*@av_xyi(Mus)*(0.5*(@d_yi(Vx)/dy + @d_xi(Vy)/dx))
     @all(τxz) = 2.0*@av_xzi(Mus)*(0.5*(@d_zi(Vx)/dz + @d_xi(Vz)/dx))
     @all(τyz) = 2.0*@av_yzi(Mus)*(0.5*(@d_zi(Vy)/dz + @d_yi(Vz)/dy))
@@ -96,8 +96,9 @@ end
     iterMax    = 6e4               # maximum number of pseudo-transient iterations
     nout       = 1000              # error checking frequency
     Vdmp       = 4.0               # damping paramter for the momentum equations
+    β_n        = 3.0               # numerical compressibility
     Vsc        = 1.0               # relaxation paramter for the momentum equations pseudo-timesteps limiters
-    Ptsc       = 8.0               # relaxation paramter for the pressure equation pseudo-timestep limiter
+    Ptsc       = 4.0               # relaxation paramter for the pressure equation pseudo-timestep limiter
     ε          = 1e-8              # nonlinear absolute tolerence
     # nx, ny, nz = 127, 127, 127     # numerical grid resolution; should be a mulitple of 32-1 for optimal GPU perf
     b_width    = (8, 4, 4)         # boundary width for comm/comp overlap
@@ -143,7 +144,7 @@ end
     Mus[Rad2.<1.0] .= μsi
     Mus        = Data.Array( Mus )
     Mus2      .= Mus
-    for ism=1:15
+    for ism=1:20#15
         @hide_communication b_width begin # communication/computation overlap
             @parallel smooth!(Mus2, Mus, 1.0)
             Mus, Mus2 = Mus2, Mus
@@ -177,12 +178,12 @@ end
         Xi_g, Zi_g  = dx+dx/2:dx:(lx-dx-dx/2), dz+dz/2:dz:(lz-dz-dz/2) # inner points only
     end
     # Time loop
-    @parallel compute_timesteps!(dτVx, dτVy, dτVz, dτPt, Musτ, Vsc, Ptsc, min_dxyz2, max_nxyz)
+    @parallel compute_timesteps!(dτVx, dτVy, dτVz, dτPt, Musτ, Vsc, Ptsc, min_dxyz2, β_n, max_nxyz)
     err=2*ε; iter=0; err_evo1=[]; err_evo2=[]
     while err > ε && iter <= iterMax
         if (iter==11)  tic()  end
         @parallel compute_P!(∇V, Pt, Vx, Vy, Vz, dτPt, dx, dy, dz)
-        @parallel compute_τ!(∇V, τxx, τyy, τzz, τxy, τxz, τyz, Vx, Vy, Vz, Mus, dx, dy, dz)
+        @parallel compute_τ!(∇V, τxx, τyy, τzz, τxy, τxz, τyz, Vx, Vy, Vz, Mus, β_n, dx, dy, dz)
         @parallel compute_dV!(Rx, Ry, Rz, dVxdτ, dVydτ, dVzdτ, Pt, τxx, τyy, τzz, τxy, τxz, τyz, dampX, dampY, dampZ, dx, dy, dz)
         @hide_communication b_width begin # communication/computation overlap
             @parallel compute_V!(Vx, Vy, Vz, dVxdτ, dVydτ, dVzdτ, dτVx, dτVy, dτVz)
@@ -198,6 +199,7 @@ end
         if iter % nout == 0
             norm_Rx = norm_g(Rx)/len_Rx_g; norm_Ry = norm_g(Ry)/len_Ry_g; norm_Rz = norm_g(Rz)/len_Rz_g; norm_∇V = norm_g(∇V)/len_∇V_g
             err = maximum([norm_Rx, norm_Ry, norm_Rz, norm_∇V])
+            if isnan(err) error("NaN") end
             push!(err_evo1,maximum([norm_Rx, norm_Ry, norm_Rz, norm_∇V])); push!(err_evo2,iter)
             if (me==0) @printf("Total steps = %d, err = %1.3e [norm_Rx=%1.3e, norm_Ry=%1.3e, norm_Rz=%1.3e, norm_∇V=%1.3e] \n", iter, err, norm_Rx, norm_Ry, norm_Rz, norm_∇V) end
         end
@@ -227,35 +229,37 @@ end
     return nxg, nyg, nzg, iter, me
 end
 
-Stokes3D(; nx=255, ny=255, nz=255, do_viz=true)
+resol = 255
+Stokes3D(; nx=resol, ny=resol, nz=resol, do_viz=true)
 
-# @views function runtests_3D(name; do_save=false)
+@views function runtests_3D(name; do_save=false)
 
-#     resol = 16 * 2 .^ (1:5)
+    resol = 16 * 2 .^ (1:5)
 
-#     out = zeros(4, length(resol))
-#     me  = 0
+    out = zeros(4, length(resol))
+    me  = 0
     
-#     MPI.Init()
+    MPI.Init()
     
-#     for i = 1:length(resol)
+    for i = 1:length(resol)
 
-#         res = resol[i]
+        res = resol[i] - 1
 
-#         nxx, nyy, nzz, iter, me = Stokes3D(; nx=res-1, ny=res-1, nz=res-1, MPI_ini_fin=false)
+        nxx, nyy, nzz, iter, me = Stokes3D(; nx=res, ny=res, nz=res, MPI_ini_fin=false)
 
-#         out[1,i] = nxx
-#         out[2,i] = nyy
-#         out[3,i] = nzz
-#         out[4,i] = iter
-#     end
+        out[1,i] = nxx
+        out[2,i] = nyy
+        out[3,i] = nzz
+        out[4,i] = iter
+    end
 
-#     if do_save && me==0
-#         !ispath("../../output") && mkdir("../../output")
-#         save("../../output/out_$(name).jld", "out", out)
-#     end
+    if do_save && me==0
+        !ispath("../../output") && mkdir("../../output")
+        save("../../output/out_$(name).jld", "out", out)
+    end
 
-#     MPI.Finalize()
-# end
+    MPI.Finalize()
+    return
+end
 
 # runtests_3D("Stokes_3D"; do_save=true)
