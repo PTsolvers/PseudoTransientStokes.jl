@@ -11,7 +11,7 @@ using ParallelStencil.FiniteDifferences2D
 else
     @init_parallel_stencil(Threads, Float64, 2)
 end
-using Plots, Printf, Statistics, LinearAlgebra
+using Plots, Printf, Statistics, LinearAlgebra, MAT
 
 @parallel function smooth!(A2::Data.Array, A::Data.Array, fact::Data.Number)
     @inn(A2) = @inn(A) + 1.0/4.1/fact*(@d2_xi(A) + @d2_yi(A))
@@ -164,6 +164,7 @@ end
             println(io, "$(nx) $(ny) $(iter)")
         end
     end
+    matwrite("Stokes_2D.mat", Dict("Pt_2D"=> Array(Pt), "Mus_2D"=> Array(Mus), "Txy_2D"=> Array(τxy), "dx_2D"=> dx, "dy_2D"=> dy); compress = true)
     return
 end
 

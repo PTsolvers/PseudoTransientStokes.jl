@@ -1,9 +1,4 @@
-const USE_GPU = parse(Bool, ENV["USE_GPU"])
-const do_viz  = parse(Bool, ENV["DO_VIZ"])
-const do_save = parse(Bool, ENV["DO_SAVE"])
-const nx = parse(Int, ENV["NX"])
-const ny = parse(Int, ENV["NY"])
-###
+const USE_GPU = true  # Use GPU? If this is set false, then no GPU needs to be available
 using ParallelStencil
 using ParallelStencil.FiniteDifferences2D
 @static if USE_GPU
@@ -11,7 +6,7 @@ using ParallelStencil.FiniteDifferences2D
 else
     @init_parallel_stencil(Threads, Float64, 2)
 end
-using Plots, Printf, Statistics, LinearAlgebra
+using Plots, Printf, Statistics, LinearAlgebra, JLD
 
 @parallel function smooth!(A2::Data.Array, A::Data.Array, fact::Data.Number)
     @inn(A2) = @inn(A) + 1.0/4.1/fact*(@d2_xi(A) + @d2_yi(A))
@@ -69,7 +64,7 @@ end
     return
 end
 
-@views function Stokes2D()
+@views function Stokes2D(; nx=63, ny=63, do_viz=false)
     # Physics
     lx, ly    = 10.0, 10.0  # domain extends
     μs0       = 1.0         # matrix viscosity
@@ -158,13 +153,34 @@ end
         p5 = plot(err_evo2,err_evo1, legend=false, xlabel="# iterations", ylabel="log10(error)", linewidth=2, markershape=:circle, markersize=3, labels="max(error)", yaxis=:log10)
         display(plot(p1, p2, p4, p5))
     end
-    if do_save
-        !ispath("../output") && mkdir("../output")
-        open("../output/out_Stokes2D.txt","a") do io
-            println(io, "$(nx) $(ny) $(iter)")
-        end
-    end
-    return
+    return nx, ny, iter
 end
 
-Stokes2D()
+#resol = 511
+#Stokes2D(; nx=resol, ny=resol, do_viz=true)
+
+@views function runtests_2D(name; do_save=false)
+
+    resol = 16 * 2 .^ (1:9)
+
+    out = zeros(3, length(resol))
+    
+    for i = 1:length(resol)
+
+        res = resol[i]
+
+        nxx, nyy, iter = Stokes2D(; nx=res-1, ny=res-1)
+
+        out[1,i] = nxx
+        out[2,i] = nyy
+        out[3,i] = iter
+    end
+
+    if do_save
+        !ispath("../output") && mkdir("../output")
+        save("../output/out_$(name).jld", "out", out)
+    end
+
+end
+
+runtests_2D("Stokes_2D"; do_save=true)

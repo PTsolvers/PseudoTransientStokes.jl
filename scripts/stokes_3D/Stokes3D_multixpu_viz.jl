@@ -12,13 +12,14 @@ using ParallelStencil.FiniteDifferences3D
 else
     @init_parallel_stencil(Threads, Float64, 3)
 end
-using ImplicitGlobalGrid, Plots, Printf, Statistics, LinearAlgebra
+using ImplicitGlobalGrid, Plots, Printf, Statistics, LinearAlgebra, MAT
 import MPI
 # Global reductions
 mean_g(A)    = (mean_l = mean(A); MPI.Allreduce(mean_l, MPI.SUM, MPI.COMM_WORLD)/MPI.Comm_size(MPI.COMM_WORLD))
 norm_g(A)    = (sum2_l = sum(A.^2); sqrt(MPI.Allreduce(sum2_l, MPI.SUM, MPI.COMM_WORLD)))
 maximum_g(A) = (max_l  = maximum(A); MPI.Allreduce(max_l,  MPI.MAX, MPI.COMM_WORLD))
 # CPU functions
+@views av_xza(A) = (A[1:end-1,:,1:end-1] .+ A[1:end-1,:,2:end] .+ A[2:end,:,1:end-1] .+ A[2:end,:,2:end]).*0.25
 @views av_zi(A) = (A[2:end-1,2:end-1,2:end-2] .+ A[2:end-1,2:end-1,3:end-1]).*0.5
 @views av_za(A) = (A[:,:,1:end-1] .+ A[:,:,2:end]).*0.5
 @views inn(A)   =  A[2:end-1,2:end-1,2:end-1]
@@ -177,9 +178,13 @@ end
         Pt_v   = zeros(nx_v, ny_v, nz_v) # global array for visu
         Vz_v   = zeros(nx_v, ny_v, nz_v)
         Rz_v   = zeros(nx_v, ny_v, nz_v)
+        Mus_v  = zeros(nx_v, ny_v, nz_v)
+        τxz_v  = zeros(nx_v, ny_v, nz_v)
         Pt_inn = zeros(nx-2, ny-2, nz-2) # no halo local array for visu
         Vz_inn = zeros(nx-2, ny-2, nz-2)
         Rz_inn = zeros(nx-2, ny-2, nz-2)
+        Mus_inn= zeros(nx-2, ny-2, nz-2)
+        τxz_inn= zeros(nx-2, ny-2, nz-2)
         y_sl2, y_sl = Int(ceil((ny_g()-2)/2)), Int(ceil(ny_g()/2))
         Xi_g, Zi_g  = dx+dx/2:dx:(lx-dx-dx/2), dz+dz/2:dz:(lz-dz-dz/2) # inner points only
     end
@@ -221,15 +226,18 @@ end
         Pt_inn .= inn(Pt);   gather!(Pt_inn, Pt_v)
         Vz_inn .= av_zi(Vz); gather!(Vz_inn, Vz_v)
         Rz_inn .= av_za(Rz); gather!(Rz_inn, Rz_v)
-        if (me==0)
-            p1 = heatmap(Xi_g, Zi_g, Pt_v[:,y_sl,:]', aspect_ratio=1, xlims=(Xi_g[1],Xi_g[end]), zlims=(Zi_g[1],Zi_g[end]), c=:viridis, title="Pressure")
-            p2 = heatmap(Xi_g, Zi_g, Vz_v[:,y_sl,:]', aspect_ratio=1, xlims=(Xi_g[1],Xi_g[end]), zlims=(Zi_g[1],Zi_g[end]), c=:viridis, title="Vz")
-            p4 = heatmap(Xi_g, Zi_g, log10.(abs.(Rz_v[:,y_sl2,:]')), aspect_ratio=1,  xlims=(Xi_g[1],Xi_g[end]), zlims=(Zi_g[1],Zi_g[end]), c=:viridis, title="log10(Rz)")
-            p5 = plot(err_evo2,err_evo1, legend=false, xlabel="# iterations", ylabel="log10(error)", linewidth=2, markershape=:circle, markersize=3, labels="max(error)", yaxis=:log10)
-            plot(p1, p2, p4, p5)
-            savefig("../../figures/Stokes_3D_$(nx_g()).png")
-        end
+        Mus_inn.= inn(Mus);  gather!(Mus_inn, Mus_v)
+        τxz_inn.= av_xza(τxz); gather!(τxz_inn, τxz_v)
+        #if (me==0)
+        #    p1 = heatmap(Xi_g, Zi_g, Pt_v[:,y_sl,:]', aspect_ratio=1, xlims=(Xi_g[1],Xi_g[end]), zlims=(Zi_g[1],Zi_g[end]), c=:viridis, title="Pressure")
+        #    p2 = heatmap(Xi_g, Zi_g, Vz_v[:,y_sl,:]', aspect_ratio=1, xlims=(Xi_g[1],Xi_g[end]), zlims=(Zi_g[1],Zi_g[end]), c=:viridis, title="Vz")
+        #    p4 = heatmap(Xi_g, Zi_g, log10.(abs.(Rz_v[:,y_sl2,:]')), aspect_ratio=1,  xlims=(Xi_g[1],Xi_g[end]), zlims=(Zi_g[1],Zi_g[end]), c=:viridis, title="log10(Rz)")
+        #    p5 = plot(err_evo2,err_evo1, legend=false, xlabel="# iterations", ylabel="log10(error)", linewidth=2, markershape=:circle, markersize=3, labels="max(error)", yaxis=:log10)
+        #    plot(p1, p2, p4, p5)
+        #    savefig("../../figures/Stokes_3D_$(nx_g()).png")
+        #end
     end
+    if (me==0) matwrite("Stokes_3D.mat", Dict("Pt_3D"=> Pt_v, "Mus_3D"=> Mus_v, "Txz_3D"=> τxz_v, "dx_3D"=> dx, "dy_3D"=> dy, "dz_3D"=> dz); compress = true) end    
     if me==0 && do_save
         !ispath("../../output") && mkdir("../../output")
         open("../../output/out_Stokes3D.txt","a") do io
