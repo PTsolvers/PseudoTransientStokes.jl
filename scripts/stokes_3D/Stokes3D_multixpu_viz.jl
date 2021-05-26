@@ -237,7 +237,7 @@ end
         #    savefig("../../figures/Stokes_3D_$(nx_g()).png")
         #end
     end
-    if (me==0) matwrite("Stokes_3D.mat", Dict("Pt_3D"=> Pt_v, "Mus_3D"=> Mus_v, "Txz_3D"=> τxz_v, "dx_3D"=> dx, "dy_3D"=> dy, "dz_3D"=> dz); compress = true) end    
+    if (me==0) matwrite("Stokes_3D.mat", Dict("Pt_3D"=> Pt_v, "Mus_3D"=> Mus_v, "Txz_3D"=> τxz_v, "Vz_3D"=> Vz_v, "dx_3D"=> dx, "dy_3D"=> dy, "dz_3D"=> dz); compress = true) end    
     if me==0 && do_save
         !ispath("../../output") && mkdir("../../output")
         open("../../output/out_Stokes3D.txt","a") do io
