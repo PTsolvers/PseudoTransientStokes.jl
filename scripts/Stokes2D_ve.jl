@@ -172,7 +172,7 @@ end
     A_eff    = (6*2 + 1)/1e9*nx*ny*sizeof(Data.Number) # Effective main memory access per iteration [GB] (Lower bound of required memory access: Te has to be read and written: 2 whole-array memaccess; Ci has to be read: : 1 whole-array memaccess)
     wtime_it = wtime/(ittot-10)                         # Execution time per iteration [s]
     T_eff    = A_eff/wtime_it                          # Effective memory throughput [GB/s]
-    @printf("Total iters = %d (%d steps), time = %1.3e sec (@ T_eff = %1.2f GB/s) \n", ittot-10, nt, wtime, round(T_eff, sigdigits=2))
+    @printf("Total iters = %d (%d steps), time = %1.3e sec (@ T_eff = %1.2f GB/s) \n", ittot, nt, wtime, round(T_eff, sigdigits=2))
     # Visualisation
     if do_viz
         X, Y, Yv  = dx/2:dx:lx-dx/2, dy/2:dy:ly-dy/2, 0:dy:ly
