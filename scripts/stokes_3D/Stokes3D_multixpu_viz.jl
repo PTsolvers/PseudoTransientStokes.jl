@@ -145,8 +145,8 @@ end
     Vx         =  zeros(nx+1,ny  ,nz  )
     Vz         =  zeros(nx  ,ny  ,nz+1)
     Rad2      .= [(x_g(ix,dx,Rad2) +0.5*dx -0.5*lx)^2 + (y_g(iy,dy,Rad2) +0.5*dy -0.5*ly)^2 + (z_g(iz,dz,Rad2) +0.5*dz -0.5*lz)^2 for ix=1:size(Rad2,1), iy=1:size(Rad2,2), iz=1:size(Rad2,3)]
-    Vx         = Data.Array( -εbg.*[((ix-1)*dx -0.5*lx) for ix=1:size(Vx,1), iy=1:size(Vx,2), iz=1:size(Vx,3)] )
-    Vz         = Data.Array(  εbg.*[((iz-1)*dz -0.5*lz) for ix=1:size(Vz,1), iy=1:size(Vz,2), iz=1:size(Vz,3)] )
+    Vx         = Data.Array( -εbg.*[(x_g(ix,dx,Vx) +0.5*dx -0.5*lx) for ix=1:size(Vx,1), iy=1:size(Vx,2), iz=1:size(Vx,3)] )
+    Vz         = Data.Array(  εbg.*[(z_g(iz,dz,Vz) +0.5*dz -0.5*lz) for ix=1:size(Vz,1), iy=1:size(Vz,2), iz=1:size(Vz,3)] )
     Mus        = μs0*ones(nx,ny,nz)    
     Mus[Rad2.<1.0] .= μsi
     Mus        = Data.Array( Mus )
