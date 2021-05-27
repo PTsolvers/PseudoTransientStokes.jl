@@ -13,7 +13,9 @@ DO_VIZ=true
 DO_SAVE=false
 
 if [ "$DO_SAVE" = "true" ]; then
+
     FILE=../../output/out_Stokes3D.txt
+    
     if [ -f "$FILE" ]; then
         echo "Systematic results (file $FILE) already exists. Remove to continue."
         exit 0
