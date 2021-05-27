@@ -190,7 +190,7 @@ end
             println(io, "$(nx) $(ny) $(ittot) $(nt)")
         end
     end
-    matwrite("Stokes_2_ve.mat", Dict("Pt_2D"=> Array(Pt), "Mus_2D"=> Array(Mus), "Txy_2D"=> Array(τxy), "Vy_2D"=> Array(Vy), "dx_2D"=> dx, "dy_2D"=> dy); compress = true)
+    matwrite("Stokes_2D_ve.mat", Dict("Pt_2D"=> Array(Pt), "Mus_2D"=> Array(Mus), "Txy_2D"=> Array(τxy), "Vy_2D"=> Array(Vy), "dx_2D"=> dx, "dy_2D"=> dy); compress = true)
     return
 end
 
