@@ -1,8 +1,8 @@
-const USE_GPU = false#parse(Bool, ENV["USE_GPU"])
-const do_viz  = true#parse(Bool, ENV["DO_VIZ"])
-const do_save = false#parse(Bool, ENV["DO_SAVE"])
-const nx = 127#parse(Int, ENV["NX"])
-const ny = 127#parse(Int, ENV["NY"])
+const USE_GPU = false #parse(Bool, ENV["USE_GPU"])
+const do_viz  = true #parse(Bool, ENV["DO_VIZ"])
+const do_save = false #parse(Bool, ENV["DO_SAVE"])
+const nx = 127 #parse(Int, ENV["NX"])
+const ny = 127 #parse(Int, ENV["NY"])
 ###
 using ParallelStencil
 using ParallelStencil.FiniteDifferences2D
@@ -81,16 +81,16 @@ end
 @views function Stokes2D()
     # Physics
     lx, ly    = 10.0, 10.0  # domain extends
-    ξ         = 2.0         # Maxwell relaxation time
+    ξ         = 1.0         # Maxwell relaxation time
     μs0       = 1.0         # matrix viscosity
     μsi       = 1e-3        # inclusion viscosity
     G         = 1.0         # elastic shear modulus
     εbg       = 1.0         # background strain-rate
     dt        = μs0/(G*ξ)
     # Numerics
-    nt        = 10          # number of time steps
-    iterMax   = 1e5         # maximum number of pseudo-transient iterations
-    nout      = 500         # error checking frequency
+    nt        = 5           # number of time steps
+    iterMax   = 2e5         # maximum number of pseudo-transient iterations
+    nout      = 200         # error checking frequency
     Vdmp      = 4.0         # damping paramter for the momentum equations
     β_n       = 2.0         # numerical compressibility
     Vsc       = 1.0         # relaxation paramter for the momentum equations pseudo-timesteps limiters
@@ -159,11 +159,11 @@ end
             if iter % nout == 0
                 norm_Rx = norm(Rx)/length(Rx); norm_Ry = norm(Ry)/length(Ry); norm_∇V = norm(∇V)/length(∇V)
                 err = maximum([norm_Rx, norm_Ry, norm_∇V])
+                if isnan(err) error("NaN") end
                 push!(err_evo1, maximum([norm_Rx, norm_Ry, norm_∇V])); push!(err_evo2,iter)
                 @printf("Step = %d, iter = %d, err = %1.3e [norm_Rx=%1.3e, norm_Ry=%1.3e, norm_∇V=%1.3e] \n", it, iter, err, norm_Rx, norm_Ry, norm_∇V)
             end
         end
-        if isnan(err) error("NaN") end
         ittot += iter; t += dt
         push!(evo_t, t); push!(evo_τyy, maximum(τyy))
     end
@@ -180,14 +180,14 @@ end
         p2 = heatmap(X, Yv, Array(Vy)', aspect_ratio=1, xlims=(X[1],X[end]), ylims=(Yv[1],Yv[end]), c=:viridis, title="Vy")
         p4 = heatmap(X[2:end-1], Yv[2:end-1], log10.(abs.(Array(Ry)')), aspect_ratio=1, xlims=(X[2],X[end-1]), ylims=(Yv[2],Yv[end-1]), c=:viridis, title="log10(Ry)")
         #p5 = plot(err_evo2,err_evo1, legend=false, xlabel="# iterations", ylabel="log10(error)", linewidth=2, markershape=:circle, markersize=3, labels="max(error)", yaxis=:log10)
-        p3 = plot(evo_t, evo_τyy , legend=false, xlabel="time", ylabel="max(τxx)", linewidth=0, markershape=:circle, framestyle=:box, markersize=3)
+        p3 = plot(evo_t, evo_τyy , legend=false, xlabel="time", ylabel="max(τyy)", linewidth=0, markershape=:circle, framestyle=:box, markersize=3)
             #plot!(evo_t, 2.0.*εbg.*μs0.*(1.0.-exp.(.-evo_t.*G./μs0)), linewidth=2.0) # analytical solution
         display(plot(p1, p2, p4, p3))
     end
     if do_save
         !ispath("../output") && mkdir("../output")
         open("../output/out_Stokes2D_ve.txt","a") do io
-            println(io, "$(nx) $(ny) $(ittot)")
+            println(io, "$(nx) $(ny) $(ittot) $(nt)")
         end
     end
     return
