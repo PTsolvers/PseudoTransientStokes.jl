@@ -8,12 +8,7 @@ using ParallelStencil
 using ParallelStencil.FiniteDifferences2D
 @static if USE_GPU
     @init_parallel_stencil(CUDA, Float64, 2)
-    macro pow(args...)  esc(:(CUDA.pow($(args...)))) end
-    macro sqrt(args...)  esc(:(CUDA.sqrt($(args...)))) end
 else
-    pow(x,y) = x^y
-    macro pow(args...)  esc(:(pow($(args...)))) end
-    macro sqrt(args...)  esc(:(sqrt($(args...)))) end
     @init_parallel_stencil(Threads, Float64, 2)
 end
 using Plots, Printf, Statistics, LinearAlgebra
@@ -28,10 +23,10 @@ end
     return
 end
 
-@parallel function compute_iteration_params!(rhoG::Data.Array, Gdt::Data.Array, dt_rho::Data.Array, Musτ::Data.Array, CFL::Data.Number, G::Data.Number, dt::Data.Number, Re2::Data.Number, min_dxy::Data.Number, max_lxy2::Data.Number)
-    @all(rhoG)   = Re2*@pow(@all(Musτ)/(@all(Musτ)/(G*dt)+1),2)/max_lxy2;
-    @all(dt_rho) = CFL*min_dxy/@sqrt(@all(rhoG));
-    @all(Gdt)    = @all(dt_rho)*@all(rhoG);
+@parallel function compute_iter_params!(RhoG::Data.Array, dt_Rho::Data.Array, Gdt::Data.Array, Musτ::Data.Array, CFL::Data.Number, G::Data.Number, dt::Data.Number, Re2::Data.Number, min_dxy::Data.Number, max_lxy2::Data.Number)
+    @all(RhoG)   = Re2*(@all(Musτ)/(@all(Musτ)/(G*dt)+1))^2/max_lxy2
+    @all(dt_Rho) = CFL*min_dxy/sqrt(@all(RhoG))
+    @all(Gdt)    = @all(dt_Rho)*@all(RhoG)
     return
 end
 
@@ -42,27 +37,36 @@ end
     return
 end
 
-macro Gr()    esc(:( @all(Gdt)/(G*dt) )) end
-macro av_Gr() esc(:(  @av(Gdt)/(G*dt) )) end
-
-@parallel function compute_σ!(∇V::Data.Array, Pt::Data.Array, τxx::Data.Array, τyy::Data.Array, τxy::Data.Array, txx_o::Data.Array, tyy_o::Data.Array, txy_o::Data.Array, Gdt::Data.Array, Vx::Data.Array, Vy::Data.Array, Mus::Data.Array, G::Data.Number, dt::Data.Number, K_G::Data.Number, dx::Data.Number, dy::Data.Number)
+@parallel function compute_P!(∇V::Data.Array, Pt::Data.Array, Gdt::Data.Array, Vx::Data.Array, Vy::Data.Array, K_G::Data.Number, dx::Data.Number, dy::Data.Number)
     @all(∇V)  = @d_xa(Vx)/dx + @d_ya(Vy)/dy
     @all(Pt)  = @all(Pt) - K_G*@all(Gdt)*@all(∇V)
+    return
+end
+
+macro Gr()    esc(:( @all(Gdt)/(G*dt) )) end
+macro av_Gr() esc(:(  @av(Gdt)/(G*dt) )) end
+@parallel function compute_τ!(τxx::Data.Array, τyy::Data.Array, τxy::Data.Array, txx_o::Data.Array, tyy_o::Data.Array, txy_o::Data.Array, Gdt::Data.Array, Vx::Data.Array, Vy::Data.Array, Mus::Data.Array, ∇V::Data.Array, G::Data.Number, dt::Data.Number, dx::Data.Number, dy::Data.Number)
     @all(τxx) = (@all(τxx) + @all(txx_o)*   @Gr() + 2.0*@all(Gdt)*(@d_xa(Vx)/dx - 1.0/3.0*@all(∇V)))/(1.0 + @all(Gdt)/@all(Mus) + @Gr())
     @all(τyy) = (@all(τyy) + @all(tyy_o)*   @Gr() + 2.0*@all(Gdt)*(@d_ya(Vy)/dy - 1.0/3.0*@all(∇V)))/(1.0 + @all(Gdt)/@all(Mus) + @Gr())
-    @all(τxy) = (@all(τxy) + @all(txy_o)*@av_Gr() + 2.0*@av(Gdt)*(0.5*(@d_yi(Vx)/dy + @d_xi(Vy)/dx)))/(1.0 + @av(Gdt)/@av(Mus)+ @av_Gr())
+    @all(τxy) = (@all(τxy) + @all(txy_o)*@av_Gr() + 2.0*@av(Gdt)*(0.5*(@d_yi(Vx)/dy + @d_xi(Vy)/dx)))/(1.0 + @av(Gdt)/@av(Mus) + @av_Gr())
     return
 end
 
-@parallel function compute_dV!(Rx::Data.Array, Ry::Data.Array, Pt::Data.Array, τxx::Data.Array, τyy::Data.Array, τxy::Data.Array, dt_rho::Data.Array, dx::Data.Number, dy::Data.Number)
-    @all(Rx)    = (@d_xi(τxx)/dx + @d_ya(τxy)/dy - @d_xi(Pt)/dx)*@av_xi(dt_rho)
-    @all(Ry)    = (@d_yi(τyy)/dy + @d_xa(τxy)/dx - @d_yi(Pt)/dy)*@av_yi(dt_rho)
+@parallel function compute_dV!(dVx::Data.Array, dVy::Data.Array, Pt::Data.Array, τxx::Data.Array, τyy::Data.Array, τxy::Data.Array, dt_Rho::Data.Array, dx::Data.Number, dy::Data.Number)
+    @all(dVx) = (@d_xi(τxx)/dx + @d_ya(τxy)/dy - @d_xi(Pt)/dx)*@av_xi(dt_Rho)
+    @all(dVy) = (@d_yi(τyy)/dy + @d_xa(τxy)/dx - @d_yi(Pt)/dy)*@av_yi(dt_Rho)
     return
 end
 
-@parallel function compute_V!(Vx::Data.Array, Vy::Data.Array, Rx::Data.Array, Ry::Data.Array)
-    @inn(Vx) = @inn(Vx) + @all(Rx)
-    @inn(Vy) = @inn(Vy) + @all(Ry)
+@parallel function compute_V!(Vx::Data.Array, Vy::Data.Array, dVx::Data.Array, dVy::Data.Array)
+    @inn(Vx) = @inn(Vx) + @all(dVx)
+    @inn(Vy) = @inn(Vy) + @all(dVy)
+    return
+end
+
+@parallel function compute_Res!(Rx::Data.Array, Ry::Data.Array, Pt::Data.Array, τxx::Data.Array, τyy::Data.Array, τxy::Data.Array, dx::Data.Number, dy::Data.Number)
+    @all(Rx) = @d_xi(τxx)/dx + @d_ya(τxy)/dy - @d_xi(Pt)/dx
+    @all(Ry) = @d_yi(τyy)/dy + @d_xa(τxy)/dx - @d_yi(Pt)/dy
     return
 end
 
@@ -91,9 +95,9 @@ end
     nt        = 5           # number of time steps
     iterMax   = 2e5         # maximum number of pseudo-transient iterations
     nout      = 200         # error checking frequency
-    Re2       = (2.3π)^2;   # Reynolds number squared
-    K_G       = 1.0;        # Bulk to shear elastic modulus ratio
-    CFL       = 1/2.5;        # CFL number
+    Re2       = (2.3π)^2    # Reynolds number squared
+    K_G       = 1.0         # Bulk to shear elastic modulus ratio
+    CFL       = 1/2.5       # CFL number
     ε         = 1e-8        # nonlinear absolute tolerence
     # nx, ny    = 1*128-1, 1*128-1    # numerical grid resolution; should be a mulitple of 32-1 for optimal GPU perf
     # Derived numerics
@@ -102,8 +106,8 @@ end
     max_lxy2  = max(lx,ly)^2
     # Array allocations
     Pt        = @zeros(nx  ,ny  )
-    rhoG      = @zeros(nx  ,ny  )
-    dt_rho    = @zeros(nx  ,ny  )
+    RhoG      = @zeros(nx  ,ny  )
+    dt_Rho    = @zeros(nx  ,ny  )
     Gdt       = @zeros(nx  ,ny  )
     ∇V        = @zeros(nx  ,ny  )
     τxx       = @zeros(nx  ,ny  )
@@ -112,6 +116,8 @@ end
     τxx_o     = @zeros(nx  ,ny  )
     τyy_o     = @zeros(nx  ,ny  )
     τxy_o     = @zeros(nx-1,ny-1)
+    dVx       = @zeros(nx-1,ny-2)
+    dVy       = @zeros(nx-2,ny-1)
     Rx        = @zeros(nx-1,ny-2)
     Ry        = @zeros(nx-2,ny-1)
     Mus2      = @zeros(nx  ,ny  )
@@ -136,7 +142,7 @@ end
     @parallel (1:size(Musτ,2)) bc_x!(Musτ)
     @parallel (1:size(Musτ,1)) bc_y!(Musτ)
     # Time loop
-    @parallel compute_iteration_params!(rhoG, Gdt, dt_rho, Mus, CFL, G, dt, Re2, min_dxy, max_lxy2)
+    @parallel compute_iter_params!(RhoG, dt_Rho, Gdt, Mus, CFL, G, dt, Re2, min_dxy, max_lxy2)
     t=0.0; ittot=0; evo_t=[]; evo_τyy=[]; err_evo1=[]; err_evo2=[]
     for it = 1:nt
         err=2*ε; iter=0; 
@@ -144,13 +150,15 @@ end
         # Pseudo-transient iteration
         while err > ε && iter <= iterMax
             if (it==1 && iter==11)  global wtime0 = Base.time()  end
-            @parallel compute_σ!(∇V, Pt, τxx, τyy, τxy, τxx_o, τyy_o, τxy_o, Gdt, Vx, Vy, Mus, G, dt, K_G, dx, dy)
-            @parallel compute_dV!(Rx, Ry, Pt, τxx, τyy, τxy, dt_rho, dx, dy)
-            @parallel compute_V!(Vx, Vy, Rx, Ry)
+            @parallel compute_P!(∇V, Pt, Gdt, Vx, Vy, K_G, dx, dy)
+            @parallel compute_τ!(τxx, τyy, τxy, τxx_o, τyy_o, τxy_o, Gdt, Vx, Vy, Mus, ∇V, G, dt, dx, dy)
+            @parallel compute_dV!(dVx, dVy, Pt, τxx, τyy, τxy, dt_Rho, dx, dy)
+            @parallel compute_V!(Vx, Vy, dVx, dVy)
             @parallel (1:size(Vx,1)) bc_y!(Vx)
             @parallel (1:size(Vy,2)) bc_x!(Vy)
             iter += 1
             if iter % nout == 0
+                @parallel compute_Res!(Rx, Ry, Pt, τxx, τyy, τxy, dx, dy)
                 norm_Rx = norm(Rx)/length(Rx); norm_Ry = norm(Ry)/length(Ry); norm_∇V = norm(∇V)/length(∇V)
                 err = maximum([norm_Rx, norm_Ry, norm_∇V])
                 if isnan(err) error("NaN") end
