@@ -32,4 +32,5 @@ D_VIZ=$3
 D_SAVE=$4
 
 # USE_GPU=$U_GPU DO_VIZ=$D_VIZ DO_SAVE=$D_SAVE NX=$RES NY=$RES NZ=$RES $julia_ -O3 --check-bounds=no Stokes3D_multixpu.jl
-USE_GPU=$U_GPU DO_VIZ=$D_VIZ DO_SAVE=$D_SAVE NX=$RES NY=$RES NZ=$RES $julia_ -O3 --check-bounds=no Stokes3D_ve_multixpu.jl
+# USE_GPU=$U_GPU DO_VIZ=$D_VIZ DO_SAVE=$D_SAVE NX=$RES NY=$RES NZ=$RES $julia_ -O3 --check-bounds=no Stokes3D_ve_multixpu.jl
+USE_GPU=$U_GPU DO_VIZ=$D_VIZ DO_SAVE=$D_SAVE NX=$RES NY=$RES NZ=$RES $julia_ -O3 --check-bounds=no Stokes3D_ve2_multixpu.jl

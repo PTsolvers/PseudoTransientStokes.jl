@@ -5,18 +5,19 @@
 mpirun_=$(which mpirun)
 
 RESOL=( 31 63 127 255 511 )
-# RESOL=( 63 )
+# RESOL=( 511 )
 
 USE_GPU=true
 
-DO_VIZ=true
+DO_VIZ=false
 
 DO_SAVE=true
 
 if [ "$DO_SAVE" = "true" ]; then
     
     # FILE=../../output/out_Stokes3D.txt
-    FILE=../../output/out_Stokes3D_ve.txt
+    # FILE=../../output/out_Stokes3D_ve.txt
+    FILE=../../output/out_Stokes3D_ve2.txt
 
     if [ -f "$FILE" ]; then
         echo "Systematic results (file $FILE) already exists. Remove to continue."
