@@ -208,7 +208,7 @@ end
         Xi_g, Zi_g  = dx+dx/2:dx:(lx-dx-dx/2), dz+dz/2:dz:(lz-dz-dz/2) # inner points only
     end
     # Time loop
-    @parallel compute_iter_params!(RhoG, dt_Rho, Gdt, Mus, CFL, G, dt, Re2, min_dxyz, max_lxyz2)
+    @parallel compute_iter_params!(RhoG, dt_Rho, Gdt, Musτ, CFL, G, dt, Re2, min_dxyz, max_lxyz2)
     t=0.0; ittot=0; evo_t=[]; evo_τzz=[]
     for it = 1:nt
         err=2*ε; iter=0; err_evo1=[]; err_evo2=[]

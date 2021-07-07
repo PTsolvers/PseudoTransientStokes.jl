@@ -142,7 +142,7 @@ end
     @parallel (1:size(Musτ,2)) bc_x!(Musτ)
     @parallel (1:size(Musτ,1)) bc_y!(Musτ)
     # Time loop
-    @parallel compute_iter_params!(RhoG, dt_Rho, Gdt, Mus, CFL, G, dt, Re2, min_dxy, max_lxy2)
+    @parallel compute_iter_params!(RhoG, dt_Rho, Gdt, Musτ, CFL, G, dt, Re2, min_dxy, max_lxy2)
     t=0.0; ittot=0; evo_t=[]; evo_τyy=[]; err_evo1=[]; err_evo2=[]
     for it = 1:nt
         err=2*ε; iter=0; 
