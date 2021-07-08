@@ -24,7 +24,7 @@ end
 end
 
 @parallel function compute_iter_params!(dt_Rho::Data.Array, Gdt::Data.Array, Musτ::Data.Array, Vpdt::Data.Number, Re::Data.Number, max_lxy::Data.Number)
-    @all(dt_Rho) = Vpdt*max_lxy/Re/@all(Musτ);
+    @all(dt_Rho) = Vpdt*max_lxy/Re/@all(Musτ)
     @all(Gdt)    = Vpdt^2/@all(dt_Rho)
     return
 end
@@ -45,8 +45,8 @@ end
 @parallel function compute_dV!(Rx::Data.Array, Ry::Data.Array, dVx::Data.Array, dVy::Data.Array, Pt::Data.Array, τxx::Data.Array, τyy::Data.Array, τxy::Data.Array, dt_Rho::Data.Array, dx::Data.Number, dy::Data.Number)
     @all(Rx)   = @d_xi(τxx)/dx + @d_ya(τxy)/dy - @d_xi(Pt)/dx
     @all(Ry)   = @d_yi(τyy)/dy + @d_xa(τxy)/dx - @d_yi(Pt)/dy
-    @all(dVx)  = @av_xi(dt_Rho)*@all(Rx);
-    @all(dVy)  = @av_yi(dt_Rho)*@all(Ry);
+    @all(dVx)  = @av_xi(dt_Rho)*@all(Rx)
+    @all(dVy)  = @av_yi(dt_Rho)*@all(Ry)
     return
 end
 
@@ -155,7 +155,7 @@ end
     end
     if do_save
         !ispath("../output") && mkdir("../output")
-        open("../output/out_Stokes2D.txt","a") do io
+        open("../output/out_Stokes2D3.txt","a") do io
             println(io, "$(nx) $(ny) $(iter)")
         end
     end

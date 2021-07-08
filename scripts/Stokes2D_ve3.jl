@@ -23,9 +23,9 @@ end
     return
 end
 
-macro Mueff() esc(:(1.0/(1.0/@all(Musτ) + 1.0/(G*dt)))) end
+macro Mu_eff() esc(:(1.0/(1.0/@all(Musτ) + 1.0/(G*dt)))) end
 @parallel function compute_iter_params!(dt_Rho::Data.Array, Gdt::Data.Array, Musτ::Data.Array, Vpdt::Data.Number, G::Data.Number, dt::Data.Number, Re::Data.Number, max_lxy::Data.Number)
-    @all(dt_Rho) = Vpdt*max_lxy/Re/@Mueff();
+    @all(dt_Rho) = Vpdt*max_lxy/Re/@Mu_eff()
     @all(Gdt)    = Vpdt^2/@all(dt_Rho)
     return
 end
@@ -38,8 +38,8 @@ end
 end
 
 @parallel function compute_P!(∇V::Data.Array, Pt::Data.Array, Gdt::Data.Array, Vx::Data.Array, Vy::Data.Array, r::Data.Number, dx::Data.Number, dy::Data.Number)
-    @all(∇V)  = @d_xa(Vx)/dx + @d_ya(Vy)/dy
-    @all(Pt)  = @all(Pt) - r*@all(Gdt)*@all(∇V)
+    @all(∇V) = @d_xa(Vx)/dx + @d_ya(Vy)/dy
+    @all(Pt) = @all(Pt) - r*@all(Gdt)*@all(∇V)
     return
 end
 
@@ -97,7 +97,7 @@ end
     nout      = 200         # error checking frequency
     Re        = 3π          # Reynolds number squared
     r         = 1.0         # Bulk to shear elastic modulus ratio
-    CFL       = 1/3       # CFL number
+    CFL       = 1/3         # CFL number
     ε         = 1e-8        # nonlinear absolute tolerence
     # nx, ny    = 1*128-1, 1*128-1    # numerical grid resolution; should be a mulitple of 32-1 for optimal GPU perf
     # Derived numerics
@@ -144,7 +144,7 @@ end
     @parallel compute_iter_params!(dt_Rho, Gdt, Musτ, Vpdt, G, dt, Re, max_lxy)
     t=0.0; ittot=0; evo_t=[]; evo_τyy=[]; err_evo1=[]; err_evo2=[]
     for it = 1:nt
-        err=2*ε; iter=0; 
+        err=2*ε; iter=0
         @parallel assign_τ!(τxx, τyy, τxy, τxx_o, τyy_o, τxy_o)
         # Pseudo-transient iteration
         while err > ε && iter <= iterMax
@@ -187,7 +187,7 @@ end
     end
     if do_save
         !ispath("../output") && mkdir("../output")
-        open("../output/out_Stokes2D_ve2.txt","a") do io
+        open("../output/out_Stokes2D_ve3.txt","a") do io
             println(io, "$(nx) $(ny) $(ittot) $(nt)")
         end
     end
