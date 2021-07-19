@@ -6,20 +6,20 @@ syms lambda_k
 %% governing equations
 eq1      = 1/K*diff(p(t,x)     ,t) + diff(          v_x(t,x),x);           % mass balance
 eq2      = rho*diff(v_x(t,x)   ,t) + diff(p(t,x)-tau_xx(t,x),x);           % momentum balace
-eq3      = 1/G*diff(tau_xx(t,x),t) + 1/eta*tau_xx(t,x) - diff(v_x(t,x),x); % Maxwell rheological model
+eq3      = 1/G*diff(tau_xx(t,x),t) + 1/eta*tau_xx(t,x) - 2*diff(v_x(t,x),x); % Maxwell rheological model
 %% equation for velocity
 tmp      = diff(eq2,t)/G + diff(eq3,x) + eq2/eta - diff(eq1,x)*K/G;
 eq_v     = expand(diff(tmp,t)*eta - diff(eq1,x)*K);
 %% scales and nondimensional variables
-V_sh     = sqrt(G/rho);                                                    % velocity scale - shear wave velocity
-rho      = solve(Re == rho*V_sh*Lx/eta,rho);                               % density from Reynolds number Re
 K        = r*G;                                                            % bulk modulus from modulus ratio r
+V_sh     = sqrt((K+2*G)/rho);                                              % velocity scale - shear wave velocity
+rho      = solve(Re == rho*V_sh*Lx/eta,rho);                               % density from Reynolds number Re
 %% dispersion relation
 v_x(t,x) = v0*exp(-lambda_k*V_sh*t/Lx)*sin(pi*k*x/Lx);                     % Fourier term
-disp_rel = expand(subs(subs(eq_v/v_x(t,x))));
+disp_rel = subs(subs(eq_v/v_x(t,x)));
 cfs      = coeffs(disp_rel,lambda_k);
-disp_rel = collect(simplify(disp_rel/cfs(end)),[lambda_k,pi,k]);
-cfs      = coeffs(disp_rel,lambda_k);
+cfs      = fliplr(simplify(cfs/cfs(end)));
+disp_rel = poly2sym(cfs,lambda_k);
 %% optimal iteration parameters
 a        = cfs(4);
 b        = cfs(3);
@@ -34,7 +34,7 @@ discrim2 = b2^2 - 4*a2*c2;                                                 % qua
 r_opt    = solve(discrim2,r,'PrincipalValue',true);
 Re_opt   = simplify(solve(subs(discrim,{r,k},{r_opt,1}),Re,'PrincipalValue',true));
 %% evaluate the solution numerically
-num_cfs  = matlabFunction(fliplr(subs(cfs,k,1)));
+num_cfs  = matlabFunction(subs(cfs,k,1));
 [Re2,r2] = ndgrid(linspace(double(Re_opt)/2,  double(Re_opt)*3/2,1001)...
     ,             linspace(0               ,2*double(r_opt)     ,1001));   % create uniform grid of Re and r values
 num_lam  = arrayfun(@(Re,r)(min(real(roots(num_cfs(Re,r))))),Re2,r2);      % compute minimum of real part of roots
@@ -54,8 +54,8 @@ ax = gca;
 xlabel('$Re$','Interpreter','latex');ylabel('$r$','Interpreter','latex')
 xticks([double(Re_opt)/2 double(Re_opt) double(Re_opt)*3/2])
 yticks([0 double(r_opt) 2*double(r_opt)])
-xticklabels({'$3\pi\sqrt{6}/8$','$3\pi\sqrt{6}/4$','$3\pi\sqrt{6}/2$'})
-yticklabels({'0','1/8','1/4'})
+xticklabels({'$9\sqrt{3}\pi/8$','$9\sqrt{3}\pi/4$','$9\sqrt{3}\pi/2$'})
+yticklabels({'0','1/4','1/2'})
 ax.XAxis.TickLabelInterpreter = 'latex';
 ax.YAxis.TickLabelInterpreter = 'latex';
 set(gca,'FontSize',14)
