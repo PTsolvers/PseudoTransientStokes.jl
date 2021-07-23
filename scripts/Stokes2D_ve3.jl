@@ -24,9 +24,9 @@ end
 end
 
 macro Mu_eff() esc(:(1.0/(1.0/@all(Musτ) + 1.0/(G*dt)))) end
-@parallel function compute_iter_params!(dt_Rho::Data.Array, Gdt::Data.Array, Musτ::Data.Array, Vpdt::Data.Number, G::Data.Number, dt::Data.Number, Re::Data.Number, max_lxy::Data.Number)
+@parallel function compute_iter_params!(dt_Rho::Data.Array, Gdt::Data.Array, Musτ::Data.Array, Vpdt::Data.Number, G::Data.Number, dt::Data.Number, Re::Data.Number, r::Data.Number, max_lxy::Data.Number)
     @all(dt_Rho) = Vpdt*max_lxy/Re/@Mu_eff()
-    @all(Gdt)    = Vpdt^2/@all(dt_Rho)
+    @all(Gdt)    = Vpdt^2/@all(dt_Rho)/(r+2)
     return
 end
 
@@ -95,9 +95,9 @@ end
     nt        = 5           # number of time steps
     iterMax   = 2e5         # maximum number of pseudo-transient iterations
     nout      = 200         # error checking frequency
-    Re        = 3π          # Reynolds number squared
+    Re        = 5π          # Reynolds number squared
     r         = 1.0         # Bulk to shear elastic modulus ratio
-    CFL       = 1/3         # CFL number
+    CFL       = 0.9/sqrt(2) # CFL number
     ε         = 1e-8        # nonlinear absolute tolerence
     # nx, ny    = 1*128-1, 1*128-1    # numerical grid resolution; should be a mulitple of 32-1 for optimal GPU perf
     # Derived numerics
@@ -141,7 +141,7 @@ end
     @parallel (1:size(Musτ,2)) bc_x!(Musτ)
     @parallel (1:size(Musτ,1)) bc_y!(Musτ)
     # Time loop
-    @parallel compute_iter_params!(dt_Rho, Gdt, Musτ, Vpdt, G, dt, Re, max_lxy)
+    @parallel compute_iter_params!(dt_Rho, Gdt, Musτ, Vpdt, G, dt, Re, r, max_lxy)
     t=0.0; ittot=0; evo_t=[]; evo_τyy=[]; err_evo1=[]; err_evo2=[]
     for it = 1:nt
         err=2*ε; iter=0

@@ -23,9 +23,9 @@ end
     return
 end
 
-@parallel function compute_iter_params!(dt_Rho::Data.Array, Gdt::Data.Array, Musτ::Data.Array, Vpdt::Data.Number, Re::Data.Number, max_lxy::Data.Number)
+@parallel function compute_iter_params!(dt_Rho::Data.Array, Gdt::Data.Array, Musτ::Data.Array, Vpdt::Data.Number, Re::Data.Number, r::Data.Number, max_lxy::Data.Number)
     @all(dt_Rho) = Vpdt*max_lxy/Re/@all(Musτ)
-    @all(Gdt)    = Vpdt^2/@all(dt_Rho)
+    @all(Gdt)    = Vpdt^2/@all(dt_Rho)/(r+2.0)
     return
 end
 
@@ -78,8 +78,8 @@ end
     iterMax   = 1e5         # maximum number of pseudo-transient iterations
     nout      = 500         # error checking frequency
     ε         = 1e-8        # nonlinear absolute tolerence
-    CFL       = 1/3;
-    Re        = 3π;
+    CFL       = 0.9/sqrt(2);
+    Re        = 5π;
     r         = 1.0;
     # nx, ny    = 1*128-1, 1*128-1    # numerical grid resolution; should be a mulitple of 32-1 for optimal GPU perf
     # Derived numerics
@@ -120,7 +120,7 @@ end
     @parallel (1:size(Musτ,2)) bc_x!(Musτ)
     @parallel (1:size(Musτ,1)) bc_y!(Musτ)
     # Time loop
-    @parallel compute_iter_params!(dt_Rho, Gdt, Musτ, Vpdt, Re, max_lxy)
+    @parallel compute_iter_params!(dt_Rho, Gdt, Musτ, Vpdt, Re, r, max_lxy)
     err=2*ε; iter=0; err_evo1=[]; err_evo2=[]
     while err > ε && iter <= iterMax
         if (iter==11)  global wtime0 = Base.time()  end
