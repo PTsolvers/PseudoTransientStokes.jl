@@ -1,8 +1,9 @@
-const USE_GPU = false #parse(Bool, ENV["USE_GPU"])
-const do_viz  = true #parse(Bool, ENV["DO_VIZ"])
-const do_save = false #parse(Bool, ENV["DO_SAVE"])
-const nx = 127 #parse(Int, ENV["NX"])
-const ny = 127 #parse(Int, ENV["NY"])
+const USE_GPU = parse(Bool, ENV["USE_GPU"])
+const do_viz  = parse(Bool, ENV["DO_VIZ"])
+const do_save = parse(Bool, ENV["DO_SAVE"])
+const do_save_viz = parse(Bool, ENV["DO_SAVE_VIZ"])
+const nx = parse(Int, ENV["NX"])
+const ny = parse(Int, ENV["NY"])
 ###
 using ParallelStencil
 using ParallelStencil.FiniteDifferences2D
@@ -11,7 +12,7 @@ using ParallelStencil.FiniteDifferences2D
 else
     @init_parallel_stencil(Threads, Float64, 2)
 end
-using Plots, Printf, Statistics, LinearAlgebra
+using Plots, Printf, Statistics, LinearAlgebra, MAT
 
 @parallel function smooth!(A2::Data.Array, A::Data.Array, fact::Data.Number)
     @inn(A2) = @inn(A) + 1.0/4.1/fact*(@d2_xi(A) + @d2_yi(A))
@@ -189,6 +190,10 @@ end
         open("../output/out_Stokes2D_ve.txt","a") do io
             println(io, "$(nx) $(ny) $(ittot) $(nt)")
         end
+    end
+    if do_save_viz
+        !ispath("../out_visu") && mkdir("../out_visu")
+        matwrite("../out_visu/Stokes_2D_ve.mat", Dict("Pt_2D"=> Array(Pt), "Mus_2D"=> Array(Mus), "Txy_2D"=> Array(τxy), "Vy_2D"=> Array(Vy), "dx_2D"=> dx, "dy_2D"=> dy); compress = true)
     end
     return
 end

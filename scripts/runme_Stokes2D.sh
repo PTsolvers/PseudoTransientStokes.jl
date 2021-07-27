@@ -4,7 +4,7 @@
 
 module purge > /dev/null 2>&1
 module load julia
-module load cuda/11.0
+module load cuda/11.4
 
 julia_=$(which julia)
 
@@ -16,8 +16,12 @@ DO_VIZ=false
 
 DO_SAVE=true
 
+DO_SAVE_VIZ=false
+
 if [ "$DO_SAVE" = "true" ]; then
-    FILE=../output/out_Stokes2D_ve.txt
+
+    FILE=../output/out_Stokes2D_ve3.txt
+    
     if [ -f "$FILE" ]; then
         echo "Systematic results (file $FILE) already exists. Remove to continue."
         exit 0
@@ -28,6 +32,5 @@ fi
 
 for i in "${RESOL[@]}"
 do
-    # USE_GPU=$USE_GPU DO_VIZ=$DO_VIZ DO_SAVE=$DO_SAVE NX=$i NY=$i $julia_ --project -O3 --check-bounds=no Stokes2D.jl
-    USE_GPU=$USE_GPU DO_VIZ=$DO_VIZ DO_SAVE=$DO_SAVE NX=$i NY=$i $julia_ --project -O3 --check-bounds=no Stokes2D_ve.jl
+    USE_GPU=$USE_GPU DO_VIZ=$DO_VIZ DO_SAVE=$DO_SAVE DO_SAVE_VIZ=$DO_SAVE_VIZ NX=$i NY=$i $julia_ --project -O3 --check-bounds=no Stokes2D_ve3.jl
 done
