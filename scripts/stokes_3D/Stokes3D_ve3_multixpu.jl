@@ -269,7 +269,7 @@ end
             p3 = plot(evo_t, evo_τzz, legend=false, xlabel="time", ylabel="max(τzz)", linewidth=0, markershape=:circle, framestyle=:box, markersize=3)
                #plot!(evo_t, 2.0.*εbg.*μs0.*(1.0.-exp.(.-evo_t.*G./μs0)), linewidth=2.0) # analytical solution
             plot(p1, p2, p4, p3)
-            savefig("../../figures/Stokes_3D_ve2_$(nx_g()).png")
+            savefig("../../figures/Stokes_3D_ve3_$(nx_g()).png")
         end
     end
     if me==0 && do_save
