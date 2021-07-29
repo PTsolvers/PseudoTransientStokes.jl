@@ -46,10 +46,10 @@ end
 
 macro Gr()    esc(:( @all(Gdt)/(G*dt) )) end
 macro av_Gr() esc(:(  @av(Gdt)/(G*dt) )) end
-@parallel function compute_τ!(τxx::Data.Array, τyy::Data.Array, τxy::Data.Array, txx_o::Data.Array, tyy_o::Data.Array, txy_o::Data.Array, Gdt::Data.Array, Vx::Data.Array, Vy::Data.Array, Mus::Data.Array, G::Data.Number, dt::Data.Number, dx::Data.Number, dy::Data.Number)
-    @all(τxx) = (@all(τxx) + @all(txx_o)*   @Gr() + 2.0*@all(Gdt)*(@d_xa(Vx)/dx))/(1.0 + @all(Gdt)/@all(Mus) + @Gr())
-    @all(τyy) = (@all(τyy) + @all(tyy_o)*   @Gr() + 2.0*@all(Gdt)*(@d_ya(Vy)/dy))/(1.0 + @all(Gdt)/@all(Mus) + @Gr())
-    @all(τxy) = (@all(τxy) + @all(txy_o)*@av_Gr() + 2.0*@av(Gdt)*(0.5*(@d_yi(Vx)/dy + @d_xi(Vy)/dx)))/(1.0 + @av(Gdt)/@av(Mus) + @av_Gr())
+@parallel function compute_τ!(τxx::Data.Array, τyy::Data.Array, τxy::Data.Array, τxx_o::Data.Array, τyy_o::Data.Array, τxy_o::Data.Array, Gdt::Data.Array, Vx::Data.Array, Vy::Data.Array, Mus::Data.Array, G::Data.Number, dt::Data.Number, dx::Data.Number, dy::Data.Number)
+    @all(τxx) = (@all(τxx) + @all(τxx_o)*   @Gr() + 2.0*@all(Gdt)*(@d_xa(Vx)/dx))/(1.0 + @all(Gdt)/@all(Mus) + @Gr())
+    @all(τyy) = (@all(τyy) + @all(τyy_o)*   @Gr() + 2.0*@all(Gdt)*(@d_ya(Vy)/dy))/(1.0 + @all(Gdt)/@all(Mus) + @Gr())
+    @all(τxy) = (@all(τxy) + @all(τxy_o)*@av_Gr() + 2.0*@av(Gdt)*(0.5*(@d_yi(Vx)/dy + @d_xi(Vy)/dx)))/(1.0 + @av(Gdt)/@av(Mus) + @av_Gr())
     return
 end
 
@@ -181,7 +181,7 @@ end
         p1 = heatmap(X,  Y, Array(τyy)', aspect_ratio=1, xlims=(X[1],X[end]), ylims=(Y[1],Y[end]), c=:viridis, title="τyy")
         p2 = heatmap(X, Yv, Array(Vy)', aspect_ratio=1, xlims=(X[1],X[end]), ylims=(Yv[1],Yv[end]), c=:viridis, title="Vy")
         p4 = heatmap(X[2:end-1], Yv[2:end-1], log10.(abs.(Array(Ry)')), aspect_ratio=1, xlims=(X[2],X[end-1]), ylims=(Yv[2],Yv[end-1]), c=:viridis, title="log10(Ry)")
-        p5 = scatter(err_evo2,err_evo1, legend=false, xlabel="# iterations", ylabel="log10(error)", linewidth=2, markershape=:circle, markersize=3, labels="max(error)", yaxis=:log10)
+        p5 = scatter(err_evo2, err_evo1, legend=false, xlabel="# iterations", ylabel="log10(error)", linewidth=2, markershape=:circle, markersize=3, framestyle=:box, labels="max(error)", yaxis=:log10)
         p3 = plot(evo_t, evo_τyy , legend=false, xlabel="time", ylabel="max(τyy)", linewidth=0, markershape=:circle, framestyle=:box, markersize=3)
             #plot!(evo_t, 2.0.*εbg.*μs0.*(1.0.-exp.(.-evo_t.*G./μs0)), linewidth=2.0) # analytical solution
         display(plot(p1, p2, p4, p5, p3))
