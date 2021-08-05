@@ -1,8 +1,8 @@
-const USE_GPU = parse(Bool, ENV["USE_GPU"])
-const do_viz  = parse(Bool, ENV["DO_VIZ"])
-const do_save = parse(Bool, ENV["DO_SAVE"])
-const nx = parse(Int, ENV["NX"])
-const ny = parse(Int, ENV["NY"])
+const USE_GPU = haskey(ENV, "USE_GPU") ? parse(Bool, ENV["USE_GPU"]) : false
+const do_viz  = haskey(ENV, "DO_VIZ")  ? parse(Bool, ENV["DO_VIZ"])  : true
+const do_save = haskey(ENV, "DO_SAVE") ? parse(Bool, ENV["DO_SAVE"]) : false
+const nx = haskey(ENV, "NX") ? parse(Int, ENV["NX"]) : 512 - 1
+const ny = haskey(ENV, "NY") ? parse(Int, ENV["NY"]) : 512 - 1
 ###
 using ParallelStencil
 using ParallelStencil.FiniteDifferences2D
