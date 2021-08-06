@@ -1,14 +1,15 @@
-const USE_GPU = false#parse(Bool, ENV["USE_GPU"])
-const do_viz  = true#parse(Bool, ENV["DO_VIZ"])
-const do_save = false#parse(Bool, ENV["DO_SAVE"])
-const do_save_viz = false#parse(Bool, ENV["DO_SAVE_VIZ"])
-const nxx = 127#parse(Int, ENV["NX"])
-const nyy = 127#parse(Int, ENV["NY"])
+const USE_GPU = haskey(ENV, "USE_GPU") ? parse(Bool, ENV["USE_GPU"]) : true
+const do_viz  = haskey(ENV, "DO_VIZ")  ? parse(Bool, ENV["DO_VIZ"])  : false
+const do_save = haskey(ENV, "DO_SAVE") ? parse(Bool, ENV["DO_SAVE"]) : false
+const do_save_viz = haskey(ENV, "DO_SAVE_VIZ") ? parse(Bool, ENV["DO_SAVE_VIZ"]) : false
+const nxx = haskey(ENV, "NX") ? parse(Int, ENV["NX"]) : 14*1024 - 1
+const nyy = haskey(ENV, "NY") ? parse(Int, ENV["NY"]) : 14*1024 - 1
 ###
 using ParallelStencil
 using ParallelStencil.FiniteDifferences2D
 @static if USE_GPU
     @init_parallel_stencil(CUDA, Float64, 2)
+    CUDA.device!(6)
 else
     @init_parallel_stencil(Threads, Float64, 2)
 end
@@ -42,17 +43,27 @@ macro av_Gdt(ix,iy) esc(:( 0.25*(Gdt[$ix,$iy]+Gdt[$ix+1,$iy]+Gdt[$ix,$iy+1]+Gdt[
 macro Gr(ix,iy)     esc(:( Gdt[$ix,$iy]/(G*dt) )) end
 macro av_Gr(ix,iy)  esc(:( @av_Gdt($ix,$iy)/(G*dt) )) end
 macro av_Mus(ix,iy) esc(:( 0.25*(Mus[$ix,$iy]+Mus[$ix+1,$iy]+Mus[$ix,$iy+1]+Mus[$ix+1,$iy+1]) )) end
-@parallel_indices (ix,iy) function compute_Pt_τ!(Pt::Data.Array, τxx::Data.Array, τyy::Data.Array, τxy::Data.Array, τxx_o::Data.Array, τyy_o::Data.Array, τxy_o::Data.Array, Gdt::Data.Array, Vx::Data.Array, Vy::Data.Array, Mus::Data.Array, r::Data.Number, G::Data.Number, dt::Data.Number, _dx::Data.Number, _dy::Data.Number)
-    if (ix<=size(Pt,1)  && iy<=size(Pt,2))    Pt[ix,iy] = Pt[ix,iy] - r*Gdt[ix,iy]*( _dx*(Vx[ix+1,iy] - Vx[ix,iy]) + _dy*(Vy[ix,iy+1] - Vy[ix,iy]) )  end
-    if (ix<=size(τxx,1) && iy<=size(τxx,2))  τxx[ix,iy] = (τxx[ix,iy] + τxx_o[ix,iy]*   @Gr(ix,iy) + 2.0*Gdt[ix,iy]*(_dx*(Vx[ix+1,iy] - Vx[ix,iy]))) / (1.0 + Gdt[ix,iy]/Mus[ix,iy] + @Gr(ix,iy))  end
-    if (ix<=size(τyy,1) && iy<=size(τyy,2))  τyy[ix,iy] = (τyy[ix,iy] + τyy_o[ix,iy]*   @Gr(ix,iy) + 2.0*Gdt[ix,iy]*(_dy*(Vy[ix,iy+1] - Vy[ix,iy]))) / (1.0 + Gdt[ix,iy]/Mus[ix,iy] + @Gr(ix,iy))  end
-    if (ix<=size(τxy,1) && iy<=size(τxy,2))  τxy[ix,iy] = (τxy[ix,iy] + τxy_o[ix,iy]*@av_Gr(ix,iy) + 2.0*@av_Gdt(ix,iy) * 0.5*(_dy*(Vx[ix+1,iy+1] - Vx[ix+1,iy]) + _dx*(Vy[ix+1,iy+1] - Vy[ix,iy+1])) ) / (1.0 + @av_Gdt(ix,iy)/@av_Mus(ix,iy) + @av_Gr(ix,iy))  end
-    return
-end
+# @parallel_indices (ix,iy) function compute_Pt_τ!(Pt::Data.Array, τxx::Data.Array, τyy::Data.Array, τxy::Data.Array, τxx_o::Data.Array, τyy_o::Data.Array, τxy_o::Data.Array, Gdt::Data.Array, Vx::Data.Array, Vy::Data.Array, Mus::Data.Array, r::Data.Number, G::Data.Number, dt::Data.Number, _dx::Data.Number, _dy::Data.Number)
+#     if (ix<=size(Pt,1)  && iy<=size(Pt,2))    Pt[ix,iy] = Pt[ix,iy] - r*Gdt[ix,iy]*( _dx*(Vx[ix+1,iy] - Vx[ix,iy]) + _dy*(Vy[ix,iy+1] - Vy[ix,iy]) )  end
+#     if (ix<=size(τxx,1) && iy<=size(τxx,2))  τxx[ix,iy] = (τxx[ix,iy] + τxx_o[ix,iy]*   @Gr(ix,iy) + 2.0*Gdt[ix,iy]*(_dx*(Vx[ix+1,iy] - Vx[ix,iy]))) / (1.0 + Gdt[ix,iy]/Mus[ix,iy] + @Gr(ix,iy))  end
+#     if (ix<=size(τyy,1) && iy<=size(τyy,2))  τyy[ix,iy] = (τyy[ix,iy] + τyy_o[ix,iy]*   @Gr(ix,iy) + 2.0*Gdt[ix,iy]*(_dy*(Vy[ix,iy+1] - Vy[ix,iy]))) / (1.0 + Gdt[ix,iy]/Mus[ix,iy] + @Gr(ix,iy))  end
+#     if (ix<=size(τxy,1) && iy<=size(τxy,2))  τxy[ix,iy] = (τxy[ix,iy] + τxy_o[ix,iy]*@av_Gr(ix,iy) + 2.0*@av_Gdt(ix,iy) * 0.5*(_dy*(Vx[ix+1,iy+1] - Vx[ix+1,iy]) + _dx*(Vy[ix+1,iy+1] - Vy[ix,iy+1])) ) / (1.0 + @av_Gdt(ix,iy)/@av_Mus(ix,iy) + @av_Gr(ix,iy))  end
+#     return
+# end
 
-@parallel_indices (ix,iy) function compute_V!(Vx::Data.Array, Vy::Data.Array, Pt::Data.Array, τxx::Data.Array, τyy::Data.Array, τxy::Data.Array, dt_Rho::Data.Array, _dx::Data.Number, _dy::Data.Number, size_innVx_1, size_innVx_2, size_innVy_1, size_innVy_2)
-    if (ix<=size_innVx_1 && iy<=size_innVx_2)  Vx[ix+1,iy+1] = Vx[ix+1,iy+1] + (_dx*(τxx[ix+1,iy+1] - τxx[ix,iy+1]) + _dy*(τxy[ix,iy+1] - τxy[ix,iy]) - _dx*(Pt[ix+1,iy+1] - Pt[ix,iy+1])) * (0.5(dt_Rho[ix,iy+1] + dt_Rho[ix+1,iy+1]))  end
-    if (ix<=size_innVy_1 && iy<=size_innVy_2)  Vy[ix+1,iy+1] = Vy[ix+1,iy+1] + (_dy*(τyy[ix+1,iy+1] - τyy[ix+1,iy]) + _dx*(τxy[ix+1,iy] - τxy[ix,iy]) - _dy*(Pt[ix+1,iy+1] - Pt[ix+1,iy])) * (0.5(dt_Rho[ix+1,iy] + dt_Rho[ix+1,iy+1]))  end
+# @parallel_indices (ix,iy) function compute_V!(Vx::Data.Array, Vy::Data.Array, Pt::Data.Array, τxx::Data.Array, τyy::Data.Array, τxy::Data.Array, dt_Rho::Data.Array, _dx::Data.Number, _dy::Data.Number, size_innVx_1, size_innVx_2, size_innVy_1, size_innVy_2)
+#     if (ix<=size_innVx_1 && iy<=size_innVx_2)  Vx[ix+1,iy+1] = Vx[ix+1,iy+1] + (_dx*(τxx[ix+1,iy+1] - τxx[ix,iy+1]) + _dy*(τxy[ix,iy+1] - τxy[ix,iy]) - _dx*(Pt[ix+1,iy+1] - Pt[ix,iy+1])) * (0.5(dt_Rho[ix,iy+1] + dt_Rho[ix+1,iy+1]))  end
+#     if (ix<=size_innVy_1 && iy<=size_innVy_2)  Vy[ix+1,iy+1] = Vy[ix+1,iy+1] + (_dy*(τyy[ix+1,iy+1] - τyy[ix+1,iy]) + _dx*(τxy[ix+1,iy] - τxy[ix,iy]) - _dy*(Pt[ix+1,iy+1] - Pt[ix+1,iy])) * (0.5(dt_Rho[ix+1,iy] + dt_Rho[ix+1,iy+1]))  end
+#     return
+# end
+
+@parallel_indices (ix,iy) function compute_Stokes!(Vx::Data.Array, Vy::Data.Array, Pt2::Data.Array, τxx2::Data.Array, τyy2::Data.Array, τxy2::Data.Array, Pt::Data.Array, τxx::Data.Array, τyy::Data.Array, τxy::Data.Array, τxx_o::Data.Array, τyy_o::Data.Array, τxy_o::Data.Array, Gdt::Data.Array, Mus::Data.Array, dt_Rho::Data.Array, r::Data.Number, G::Data.Number, dt::Data.Number, _dx::Data.Number, _dy::Data.Number, size_innVx_1, size_innVx_2, size_innVy_1, size_innVy_2)
+    if (ix<=size(Pt,1)  && iy<=size(Pt,2))     Pt2[ix,iy]    = Pt[ix,iy] - r*Gdt[ix,iy]*( _dx*(Vx[ix+1,iy] - Vx[ix,iy]) + _dy*(Vy[ix,iy+1] - Vy[ix,iy]) )  end
+    if (ix<=size(τxx,1) && iy<=size(τxx,2))    τxx2[ix,iy]   = (τxx[ix,iy] + τxx_o[ix,iy]*   @Gr(ix,iy) + 2.0*Gdt[ix,iy]*(_dx*(Vx[ix+1,iy] - Vx[ix,iy]))) / (1.0 + Gdt[ix,iy] * (1.0 / Mus[ix,iy]) + @Gr(ix,iy))  end
+    if (ix<=size(τyy,1) && iy<=size(τyy,2))    τyy2[ix,iy]   = (τyy[ix,iy] + τyy_o[ix,iy]*   @Gr(ix,iy) + 2.0*Gdt[ix,iy]*(_dy*(Vy[ix,iy+1] - Vy[ix,iy]))) / (1.0 + Gdt[ix,iy] * (1.0 / Mus[ix,iy]) + @Gr(ix,iy))  end
+    if (ix<=size(τxy,1) && iy<=size(τxy,2))    τxy2[ix,iy]   = (τxy[ix,iy] + τxy_o[ix,iy]*@av_Gr(ix,iy) + 2.0*@av_Gdt(ix,iy) * 0.5*(_dy*(Vx[ix+1,iy+1] - Vx[ix+1,iy]) + _dx*(Vy[ix+1,iy+1] - Vy[ix,iy+1])) ) / (1.0 + @av_Gdt(ix,iy) * (1.0 / @av_Mus(ix,iy)) + @av_Gr(ix,iy))  end
+    if (ix<=size_innVx_1 && iy<=size_innVx_2)  Vx[ix+1,iy+1] = Vx[ix+1,iy+1] + (_dx*(τxx2[ix+1,iy+1] - τxx2[ix,iy+1]) + _dy*(τxy2[ix,iy+1] - τxy2[ix,iy]) - _dx*(Pt2[ix+1,iy+1] - Pt2[ix,iy+1])) * (0.5(dt_Rho[ix,iy+1] + dt_Rho[ix+1,iy+1]))  end
+    if (ix<=size_innVy_1 && iy<=size_innVy_2)  Vy[ix+1,iy+1] = Vy[ix+1,iy+1] + (_dy*(τyy2[ix+1,iy+1] - τyy2[ix+1,iy]) + _dx*(τxy2[ix+1,iy] - τxy2[ix,iy]) - _dy*(Pt2[ix+1,iy+1] - Pt2[ix+1,iy])) * (0.5(dt_Rho[ix+1,iy] + dt_Rho[ix+1,iy+1]))  end
     return
 end
 
@@ -88,11 +99,11 @@ end
     # nx, ny    = 1*128-1, 1*128-1    # numerical grid resolution; should be a mulitple of 32-1 for optimal GPU perf
     BLOCKX, BLOCKY = 32, 8
     GRIDX, GRIDY   = cld(nxx, BLOCKX), cld(nyy, BLOCKY)
-    nx, ny  = BLOCKX*GRIDX -1, BLOCKY*GRIDY -1 # number of grid points
+    nx, ny  = BLOCKX*GRIDX - 1, BLOCKY*GRIDY - 1 # number of grid points
     @assert (nx, ny) == (nxx, nyy)
-    nt        = 5           # number of time steps
-    iterMax   = 2e5         # maximum number of pseudo-transient iterations
-    nout      = 500         # error checking frequency
+    nt        = 1#5           # number of time steps
+    iterMax   = 100#2e5         # maximum number of pseudo-transient iterations
+    nout      = 2000         # error checking frequency
     Re        = 5π          # Reynolds number
     r         = 1.0         # Bulk to shear elastic modulus ratio
     CFL       = 0.8/sqrt(2) # CFL number # DEBUG was 0.9
@@ -115,6 +126,10 @@ end
     τxx_o     = @zeros(nx  ,ny  )
     τyy_o     = @zeros(nx  ,ny  )
     τxy_o     = @zeros(nx-1,ny-1)
+    Pt2       = @zeros(nx  ,ny  )
+    τxx2      = @zeros(nx  ,ny  )
+    τyy2      = @zeros(nx  ,ny  )
+    τxy2      = @zeros(nx-1,ny-1)
     Rx        = @zeros(nx-1,ny-2)
     Ry        = @zeros(nx-2,ny-1)
     Mus2      = @zeros(nx  ,ny  )
@@ -149,19 +164,24 @@ end
         # Pseudo-transient iteration
         while err > ε && iter <= iterMax
             if (it==1 && iter==11) t_tic = Base.time()  end
-            @parallel cublocks cuthreads compute_Pt_τ!(Pt, τxx, τyy, τxy, τxx_o, τyy_o, τxy_o, Gdt, Vx, Vy, Mus, r, G, dt, _dx, _dy)
-            @parallel cublocks cuthreads compute_V!(Vx, Vy, Pt, τxx, τyy, τxy, dt_Rho, _dx, _dy, size_innVx_1, size_innVx_2, size_innVy_1, size_innVy_2)
+            # @parallel cublocks cuthreads compute_Pt_τ!(Pt, τxx, τyy, τxy, τxx_o, τyy_o, τxy_o, Gdt, Vx, Vy, Mus, r, G, dt, _dx, _dy)
+            # @parallel cublocks cuthreads compute_V!(Vx, Vy, Pt, τxx, τyy, τxy, dt_Rho, _dx, _dy, size_innVx_1, size_innVx_2, size_innVy_1, size_innVy_2)
+            @parallel cublocks cuthreads compute_Stokes!(Vx, Vy, Pt2, τxx2, τyy2, τxy2, Pt, τxx, τyy, τxy, τxx_o, τyy_o, τxy_o, Gdt, Mus, dt_Rho, r, G, dt, _dx, _dy, size_innVx_1, size_innVx_2, size_innVy_1, size_innVy_2)
             @parallel (1:size(Vx,1)) bc_y!(Vx)
             @parallel (1:size(Vy,2)) bc_x!(Vy)
+            Pt, Pt2   = Pt2, Pt
+            τxx, τxx2 = τxx2, τxx
+            τyy, τyy2 = τyy2, τyy
+            τxy, τxy2 = τxy2, τxy
             iter += 1
-            if iter % nout == 0
-                @parallel compute_Res!(∇V, Rx, Ry, Pt, Vx, Vy, τxx, τyy, τxy, _dx, _dy)
-                norm_Rx = norm(Rx)/length(Rx); norm_Ry = norm(Ry)/length(Ry); norm_∇V = norm(∇V)/length(∇V)
-                err = maximum([norm_Rx, norm_Ry, norm_∇V])
-                if isnan(err) error("NaN") end
-                push!(err_evo1, maximum([norm_Rx, norm_Ry, norm_∇V])); push!(err_evo2,iter)
-                @printf("Step = %d, iter = %d, err = %1.3e [norm_Rx=%1.3e, norm_Ry=%1.3e, norm_∇V=%1.3e] \n", it, iter, err, norm_Rx, norm_Ry, norm_∇V)
-            end
+            # if iter % nout == 0
+            #     @parallel compute_Res!(∇V, Rx, Ry, Pt, Vx, Vy, τxx, τyy, τxy, _dx, _dy)
+            #     norm_Rx = norm(Rx)/length(Rx); norm_Ry = norm(Ry)/length(Ry); norm_∇V = norm(∇V)/length(∇V)
+            #     err = maximum([norm_Rx, norm_Ry, norm_∇V])
+            #     if isnan(err) error("NaN") end
+            #     push!(err_evo1, maximum([norm_Rx, norm_Ry, norm_∇V])); push!(err_evo2,iter)
+            #     @printf("Step = %d, iter = %d, err = %1.3e [norm_Rx=%1.3e, norm_Ry=%1.3e, norm_∇V=%1.3e] \n", it, iter, err, norm_Rx, norm_Ry, norm_∇V)
+            # end
         end
         ittot += iter; t += dt
         push!(evo_t, t); push!(evo_τyy, maximum(τyy))
