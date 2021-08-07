@@ -2,8 +2,8 @@ const USE_GPU = haskey(ENV, "USE_GPU") ? parse(Bool, ENV["USE_GPU"]) : true
 const do_viz  = haskey(ENV, "DO_VIZ")  ? parse(Bool, ENV["DO_VIZ"])  : false
 const do_save = haskey(ENV, "DO_SAVE") ? parse(Bool, ENV["DO_SAVE"]) : false
 const do_save_viz = haskey(ENV, "DO_SAVE_VIZ") ? parse(Bool, ENV["DO_SAVE_VIZ"]) : false
-const nxx = haskey(ENV, "NX") ? parse(Int, ENV["NX"]) : 14*1024 - 1
-const nyy = haskey(ENV, "NY") ? parse(Int, ENV["NY"]) : 14*1024 - 1
+const nxx = haskey(ENV, "NX") ? parse(Int, ENV["NX"]) : 8*1024 - 1
+const nyy = haskey(ENV, "NY") ? parse(Int, ENV["NY"]) : 8*1024 - 1
 ###
 using ParallelStencil
 using ParallelStencil.FiniteDifferences2D
@@ -97,7 +97,7 @@ end
     dt        = μs0/(G*ξ)
     # Numerics
     # nx, ny    = 1*128-1, 1*128-1    # numerical grid resolution; should be a mulitple of 32-1 for optimal GPU perf
-    BLOCKX, BLOCKY = 32, 8
+    BLOCKX, BLOCKY = 32, 16
     GRIDX, GRIDY   = cld(nxx, BLOCKX), cld(nyy, BLOCKY)
     nx, ny  = BLOCKX*GRIDX - 1, BLOCKY*GRIDY - 1 # number of grid points
     @assert (nx, ny) == (nxx, nyy)
@@ -184,7 +184,7 @@ end
             # end
         end
         ittot += iter; t += dt
-        push!(evo_t, t); push!(evo_τyy, maximum(τyy))
+        # push!(evo_t, t); push!(evo_τyy, maximum(τyy))
     end
     # Performance
     t_toc    = Base.time() - t_tic
