@@ -163,7 +163,7 @@ end
     end
     # Performance
     t_toc    = Base.time() - t_tic
-    A_eff    = (6*2 + 3*2 + 3)/1e9*nx*ny*sizeof(Data.Number) # Effective main memory access per iteration [GB] (Lower bound of required memory access: Te has to be read and written: 2 whole-array memaccess; Ci has to be read: : 1 whole-array memaccess)
+    A_eff    = (6*2 + 3*1 + 3)/1e9*nx*ny*sizeof(Data.Number) # Effective main memory access per iteration [GB] (Lower bound of required memory access: Te has to be read and written: 2 whole-array memaccess; Ci has to be read: : 1 whole-array memaccess)
     t_it     = t_toc/(ittot-10)                        # Execution time per iteration [s]
     T_eff    = A_eff/t_it                              # Effective memory throughput [GB/s]
     @printf("Total iters = %d (%d steps), time = %1.3e sec (@ T_eff = %1.2f GB/s) \n", ittot, nt, t_toc, round(T_eff, sigdigits=3))

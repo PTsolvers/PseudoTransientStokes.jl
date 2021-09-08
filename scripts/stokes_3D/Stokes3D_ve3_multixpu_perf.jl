@@ -145,7 +145,6 @@ end
     _dx, _dy, _dz = 1.0/dx, 1.0/dy, 1.0/dz
     # Array allocations
     Pt         = @zeros(nx  ,ny  ,nz  )
-    RhoG       = @zeros(nx  ,ny  ,nz  )
     dt_Rho     = @zeros(nx  ,ny  ,nz  )
     Gdt        = @zeros(nx  ,ny  ,nz  )
     ∇V         = @zeros(nx  ,ny  ,nz  )
@@ -251,7 +250,7 @@ end
     end
     # Performance
     wtime    = toc()
-    A_eff    = (10*2 +1)/1e9*nx*ny*nz*sizeof(Data.Number) # Effective main memory access per iteration [GB] (Lower bound of required memory access: Te has to be read and written: 2 whole-array memaccess; Ci has to be read: : 1 whole-array memaccess)
+    A_eff    = (10*2 + 6*1 + 3)/1e9*nx*ny*nz*sizeof(Data.Number) # Effective main memory access per iteration [GB] (Lower bound of required memory access: Te has to be read and written: 2 whole-array memaccess; Ci has to be read: : 1 whole-array memaccess)
     wtime_it = wtime/(ittot-10)                           # Execution time per iteration [s]
     T_eff    = A_eff/wtime_it                             # Effective memory throughput [GB/s]
     if (me==0) @printf("Total iters = %d (%d steps), time = %1.3e sec (@ T_eff = %1.2f GB/s) \n", ittot, nt, wtime, round(T_eff, sigdigits=3)) end
