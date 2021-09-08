@@ -1,14 +1,15 @@
-const USE_GPU = false#parse(Bool, ENV["USE_GPU"])
-const do_viz  = true#parse(Bool, ENV["DO_VIZ"])
-const do_save = false#parse(Bool, ENV["DO_SAVE"])
-const do_save_viz = false#parse(Bool, ENV["DO_SAVE_VIZ"])
-const nxx = 127#parse(Int, ENV["NX"])
-const nyy = 127#parse(Int, ENV["NY"])
+const USE_GPU = haskey(ENV, "USE_GPU") ? parse(Bool, ENV["USE_GPU"]) : true
+const do_viz  = haskey(ENV, "DO_VIZ")  ? parse(Bool, ENV["DO_VIZ"])  : false
+const do_save = haskey(ENV, "DO_SAVE") ? parse(Bool, ENV["DO_SAVE"]) : false
+const do_save_viz = haskey(ENV, "DO_SAVE_VIZ") ? parse(Bool, ENV["DO_SAVE_VIZ"]) : false
+const nx = haskey(ENV, "NX") ? parse(Int, ENV["NX"]) : 1*256 - 1
+const ny = haskey(ENV, "NY") ? parse(Int, ENV["NY"]) : 1*256 - 1
 ###
 using ParallelStencil
 using ParallelStencil.FiniteDifferences2D
 @static if USE_GPU
     @init_parallel_stencil(CUDA, Float64, 2)
+    CUDA.device!(6)
 else
     @init_parallel_stencil(Threads, Float64, 2)
 end
@@ -24,10 +25,10 @@ end
     return
 end
 
-macro Mu_eff() esc(:(1.0/(1.0/@all(Musτ) + 1.0/(G*dt)))) end
-@parallel function compute_iter_params!(dt_Rho::Data.Array, Gdt::Data.Array, Musτ::Data.Array, Vpdt::Data.Number, G::Data.Number, dt::Data.Number, Re::Data.Number, r::Data.Number, max_lxy::Data.Number)
-    @all(dt_Rho) = Vpdt*max_lxy/Re/@Mu_eff()
-    @all(Gdt)    = Vpdt^2/@all(dt_Rho)/(r+2)
+macro Mu_eff(ix,iy) esc(:( 1.0/(1.0/Musτ[$ix,$iy] + 1.0/(G*dt)) )) end
+@parallel_indices (ix,iy) function compute_iter_params!(dt_Rho::Data.Array, Gdt::Data.Array, Musτ::Data.Array, Vpdt::Data.Number, G::Data.Number, dt::Data.Number, Re::Data.Number, r::Data.Number, max_lxy::Data.Number)
+    if (ix<=size(dt_Rho,1)  && iy<=size(dt_Rho,2))  dt_Rho[ix,iy] = Vpdt*max_lxy/Re/@Mu_eff(ix,iy)  end
+    if (ix<=size(Gdt,1)     && iy<=size(Gdt,2))     Gdt[ix,iy]    = Vpdt^2/dt_Rho[ix,iy]/(r+2)  end
     return
 end
 
@@ -86,13 +87,9 @@ end
     dt        = μs0/(G*ξ)
     # Numerics
     # nx, ny    = 1*128-1, 1*128-1    # numerical grid resolution; should be a mulitple of 32-1 for optimal GPU perf
-    BLOCKX, BLOCKY = 32, 8
-    GRIDX, GRIDY   = cld(nxx, BLOCKX), cld(nyy, BLOCKY)
-    nx, ny  = BLOCKX*GRIDX -1, BLOCKY*GRIDY -1 # number of grid points
-    @assert (nx, ny) == (nxx, nyy)
-    nt        = 5           # number of time steps
-    iterMax   = 2e5         # maximum number of pseudo-transient iterations
-    nout      = 500         # error checking frequency
+    nt        = 1#5           # number of time steps
+    iterMax   = 100#2e5         # maximum number of pseudo-transient iterations
+    nout      = 2000         # error checking frequency
     Re        = 5π          # Reynolds number
     r         = 1.0         # Bulk to shear elastic modulus ratio
     CFL       = 0.8/sqrt(2) # CFL number # DEBUG was 0.9
@@ -101,8 +98,6 @@ end
     dx, dy    = lx/nx, ly/ny # cell sizes
     max_lxy   = max(lx,ly)
     Vpdt      = min(dx,dy)*CFL
-    cuthreads = (BLOCKX, BLOCKY, 1)
-    cublocks  = (GRIDX,  GRIDY,  1)
     _dx, _dy  = 1.0/dx, 1.0/dy
     # Array allocations
     Pt        = @zeros(nx  ,ny  )
@@ -131,26 +126,26 @@ end
     Mus       = Data.Array( Mus )
     Mus2     .= Mus
     for ism=1:10
-        @parallel cublocks cuthreads smooth!(Mus2, Mus, 1.0)
+        @parallel smooth!(Mus2, Mus, 1.0)
         Mus, Mus2 = Mus2, Mus
     end
     Musτ     .= Mus
-    @parallel cublocks cuthreads compute_maxloc!(Musτ, Mus)
+    @parallel compute_maxloc!(Musτ, Mus)
     @parallel (1:size(Musτ,2)) bc_x!(Musτ)
     @parallel (1:size(Musτ,1)) bc_y!(Musτ)
     size_innVx_1, size_innVx_2 = size(Vx,1)-2, size(Vx,2)-2
     size_innVy_1, size_innVy_2 = size(Vy,1)-2, size(Vy,2)-2
     # Time loop
-    @parallel cublocks cuthreads compute_iter_params!(dt_Rho, Gdt, Musτ, Vpdt, G, dt, Re, r, max_lxy)
+    @parallel compute_iter_params!(dt_Rho, Gdt, Musτ, Vpdt, G, dt, Re, r, max_lxy)
     t=0.0; ittot=0; evo_t=[]; evo_τyy=[]; err_evo1=[]; err_evo2=[]; t_tic = 0.0
     for it = 1:nt
         err=2*ε; iter=0
-        @parallel cublocks cuthreads assign_τ!(τxx, τyy, τxy, τxx_o, τyy_o, τxy_o)
+        @parallel assign_τ!(τxx, τyy, τxy, τxx_o, τyy_o, τxy_o)
         # Pseudo-transient iteration
         while err > ε && iter <= iterMax
             if (it==1 && iter==11) t_tic = Base.time()  end
-            @parallel cublocks cuthreads compute_Pt_τ!(Pt, τxx, τyy, τxy, τxx_o, τyy_o, τxy_o, Gdt, Vx, Vy, Mus, r, G, dt, _dx, _dy)
-            @parallel cublocks cuthreads compute_V!(Vx, Vy, Pt, τxx, τyy, τxy, dt_Rho, _dx, _dy, size_innVx_1, size_innVx_2, size_innVy_1, size_innVy_2)
+            @parallel compute_Pt_τ!(Pt, τxx, τyy, τxy, τxx_o, τyy_o, τxy_o, Gdt, Vx, Vy, Mus, r, G, dt, _dx, _dy)
+            @parallel compute_V!(Vx, Vy, Pt, τxx, τyy, τxy, dt_Rho, _dx, _dy, size_innVx_1, size_innVx_2, size_innVy_1, size_innVy_2)
             @parallel (1:size(Vx,1)) bc_y!(Vx)
             @parallel (1:size(Vy,2)) bc_x!(Vy)
             iter += 1
@@ -164,11 +159,11 @@ end
             end
         end
         ittot += iter; t += dt
-        push!(evo_t, t); push!(evo_τyy, maximum(τyy))
+        # push!(evo_t, t); push!(evo_τyy, maximum(τyy))
     end
     # Performance
     t_toc    = Base.time() - t_tic
-    A_eff    = (6*2 + 6)/1e9*nx*ny*sizeof(Data.Number) # Effective main memory access per iteration [GB] (Lower bound of required memory access: Te has to be read and written: 2 whole-array memaccess; Ci has to be read: : 1 whole-array memaccess)
+    A_eff    = (6*2 + 3*2 + 3)/1e9*nx*ny*sizeof(Data.Number) # Effective main memory access per iteration [GB] (Lower bound of required memory access: Te has to be read and written: 2 whole-array memaccess; Ci has to be read: : 1 whole-array memaccess)
     t_it     = t_toc/(ittot-10)                        # Execution time per iteration [s]
     T_eff    = A_eff/t_it                              # Effective memory throughput [GB/s]
     @printf("Total iters = %d (%d steps), time = %1.3e sec (@ T_eff = %1.2f GB/s) \n", ittot, nt, t_toc, round(T_eff, sigdigits=3))
@@ -177,11 +172,11 @@ end
         X, Y, Yv  = dx/2:dx:lx-dx/2, dy/2:dy:ly-dy/2, 0:dy:ly
         p1 = heatmap(X,  Y, Array(τyy)', aspect_ratio=1, xlims=(X[1],X[end]), ylims=(Y[1],Y[end]), c=:viridis, title="τyy")
         p2 = heatmap(X, Yv, Array(Vy)', aspect_ratio=1, xlims=(X[1],X[end]), ylims=(Yv[1],Yv[end]), c=:viridis, title="Vy")
-        p4 = heatmap(X[2:end-1], Yv[2:end-1], log10.(abs.(Array(Ry)')), aspect_ratio=1, xlims=(X[2],X[end-1]), ylims=(Yv[2],Yv[end-1]), c=:viridis, title="log10(Ry)")
-        p5 = scatter(err_evo2,err_evo1, legend=false, xlabel="# iterations", ylabel="log10(error)", linewidth=2, markershape=:circle, markersize=3, framestyle=:box, labels="max(error)", yaxis=:log10)
+        # p4 = heatmap(X[2:end-1], Yv[2:end-1], log10.(abs.(Array(Ry)')), aspect_ratio=1, xlims=(X[2],X[end-1]), ylims=(Yv[2],Yv[end-1]), c=:viridis, title="log10(Ry)")
+        # p5 = scatter(err_evo2,err_evo1, legend=false, xlabel="# iterations", ylabel="log10(error)", linewidth=2, markershape=:circle, markersize=3, framestyle=:box, labels="max(error)", yaxis=:log10)
         p3 = plot(evo_t, evo_τyy , legend=false, xlabel="time", ylabel="max(τyy)", linewidth=0, markershape=:circle, framestyle=:box, markersize=3)
             #plot!(evo_t, 2.0.*εbg.*μs0.*(1.0.-exp.(.-evo_t.*G./μs0)), linewidth=2.0) # analytical solution
-        display(plot(p1, p2, p4, p5, p3))
+        display(plot(p1, p2, p3))
     end
     if do_save
         !ispath("../output") && mkdir("../output")
