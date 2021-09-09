@@ -224,9 +224,9 @@ end
     @printf("Total iters = %d (%d steps), time = %1.3e sec (@ T_eff = %1.2f GB/s) \n", ittot, nt, wtime, round(T_eff, sigdigits=3))
     # Visualisation
     if do_viz
-        p1 = heatmap(xc, zc, Pt[:,y_sl,:]', aspect_ratio=1, xlims=(xc[1],xc[end]), zlims=(zc[1],zc[end]), c=:viridis, title="Pressure")
-        p2 = heatmap(xc, zv, Vz[:,y_sl,:]', aspect_ratio=1, xlims=(xc[1],xc[end]), zlims=(zc[1],zc[end]), c=:viridis, title="Vz")
-        p4 = heatmap(xc[2:end-1], xv[2:end-1], log10.(abs.(Rz[:,y_sl2,:]')), aspect_ratio=1,  xlims=(xc[2],xc[end-1]), zlims=(zc[2],zc[end-1]), c=:viridis, title="log10(Rz)")
+        p1 = heatmap(xc, zc, Array(Pt)[:,y_sl,:]', aspect_ratio=1, xlims=(xc[1],xc[end]), zlims=(zc[1],zc[end]), c=:viridis, title="Pressure")
+        p2 = heatmap(xc, zv, Array(Vz)[:,y_sl,:]', aspect_ratio=1, xlims=(xc[1],xc[end]), zlims=(zc[1],zc[end]), c=:viridis, title="Vz")
+        p4 = heatmap(xc[2:end-1], xv[2:end-1], log10.(abs.(Array(Rz)[:,y_sl2,:]')), aspect_ratio=1,  xlims=(xc[2],xc[end-1]), zlims=(zc[2],zc[end-1]), c=:viridis, title="log10(Rz)")
         #p5 = plot(err_evo2,err_evo1, legend=false, xlabel="# iterations", ylabel="log10(error)", linewidth=2, markershape=:circle, markersize=3, labels="max(error)", yaxis=:log10)
         p3 = plot(evo_t, evo_τzz, legend=false, xlabel="time", ylabel="max(τzz)", linewidth=0, markershape=:circle, framestyle=:box, markersize=3)
             #plot!(evo_t, 2.0.*εbg.*μs0.*(1.0.-exp.(.-evo_t.*G./μs0)), linewidth=2.0) # analytical solution
@@ -241,7 +241,7 @@ end
     end
     if do_save_viz
         !ispath("../../out_visu") && mkdir("../../out_visu")
-        matwrite("../../out_visu/Stokes_3D_ve3_perf.mat", Dict("Pt_3D"=> Pt, "Mus_3D"=> Mus, "Txz_3D"=> τxz, "Vz_3D"=> Vz, "dx_3D"=> dx, "dy_3D"=> dy, "dz_3D"=> dz); compress = true)
+        matwrite("../../out_visu/Stokes_3D_ve3_perf.mat", Dict("Pt_3D"=> Array(Pt), "Mus_3D"=> Array(Mus), "Txz_3D"=> Array(τxz), "Vz_3D"=> Array(Vz), "dx_3D"=> dx, "dy_3D"=> dy, "dz_3D"=> dz); compress = true)
     end
     return
 end
