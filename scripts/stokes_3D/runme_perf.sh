@@ -11,7 +11,7 @@ mpirun_=$(which mpirun)
 
 RESOL1=( 31 63 127 255 511 )
 
-RESOL2=255
+RESOL2=511
 
 NP=( 1 2 4 8 )
 

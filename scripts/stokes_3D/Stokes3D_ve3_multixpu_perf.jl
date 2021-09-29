@@ -42,7 +42,7 @@ macro Mu_eff() esc(:(1.0/(1.0/@all(Musτ) + 1.0/(G*dt)))) end
     return
 end
 
-@parallel_indices (ix,iy,iz) function assign_τ!(Pt::Data.Array, τxx::Data.Array, τyy::Data.Array, τzz::Data.Array, τxy::Data.Array,  τxz::Data.Array,  τyz::Data.Array, τxx_o::Data.Array, τyy_o::Data.Array, τzz_o::Data.Array, τxy_o::Data.Array, τxz_o::Data.Array, τyz_o::Data.Array)
+@parallel_indices (ix,iy,iz) function assign_τ!(τxx::Data.Array, τyy::Data.Array, τzz::Data.Array, τxy::Data.Array,  τxz::Data.Array,  τyz::Data.Array, τxx_o::Data.Array, τyy_o::Data.Array, τzz_o::Data.Array, τxy_o::Data.Array, τxz_o::Data.Array, τyz_o::Data.Array)
     if (ix<=size(τxx,1) && iy<=size(τxx,2) && iz<=size(τxx,3))  τxx_o[ix,iy,iz] = τxx[ix,iy,iz]  end
     if (ix<=size(τyy,1) && iy<=size(τyy,2) && iz<=size(τyy,3))  τyy_o[ix,iy,iz] = τyy[ix,iy,iz]  end
     if (ix<=size(τzz,1) && iy<=size(τzz,2) && iz<=size(τzz,3))  τzz_o[ix,iy,iz] = τzz[ix,iy,iz]  end
@@ -70,7 +70,7 @@ macro inn_xy_Gr(ix,iy,iz) esc(:( @inn_xy_Gdt($ix,$iy,$iz)/(G*dt) )) end
 macro av_xyi_Gr(ix,iy,iz) esc(:( @av_xyi_Gdt($ix,$iy,$iz)/(G*dt) )) end
 macro av_xzi_Gr(ix,iy,iz) esc(:( @av_xzi_Gdt($ix,$iy,$iz)/(G*dt) )) end
 macro av_yzi_Gr(ix,iy,iz) esc(:( @av_yzi_Gdt($ix,$iy,$iz)/(G*dt) )) end
-@parallel_indices (ix,iy,iz) function compute_Pt_τ!(τxx::Data.Array, τyy::Data.Array, τzz::Data.Array, τxy::Data.Array, τxz::Data.Array, τyz::Data.Array, τxx_o::Data.Array, τyy_o::Data.Array, τzz_o::Data.Array, τxy_o::Data.Array, τxz_o::Data.Array, τyz_o::Data.Array, Vx::Data.Array, Vy::Data.Array, Vz::Data.Array, Mus::Data.Array, Gdt::Data.Array, r::Data.Number, G::Data.Number, dt::Data.Number, _dx::Data.Number, _dy::Data.Number, _dz::Data.Number)
+@parallel_indices (ix,iy,iz) function compute_Pt_τ!(Pt::Data.Array, τxx::Data.Array, τyy::Data.Array, τzz::Data.Array, τxy::Data.Array, τxz::Data.Array, τyz::Data.Array, τxx_o::Data.Array, τyy_o::Data.Array, τzz_o::Data.Array, τxy_o::Data.Array, τxz_o::Data.Array, τyz_o::Data.Array, Vx::Data.Array, Vy::Data.Array, Vz::Data.Array, Mus::Data.Array, Gdt::Data.Array, r::Data.Number, G::Data.Number, dt::Data.Number, _dx::Data.Number, _dy::Data.Number, _dz::Data.Number)
     if (ix<=size(Pt,1)  && iy<=size(Pt,2)  && iz<=size(Pt,3))    Pt[ix,iy,iz] = Pt[ix,iy,iz] - r*Gdt[ix,iy,iz]*(_dx*(Vx[ix+1,iy,iz] - Vx[ix,iy,iz]) + _dy*(Vy[ix,iy+1,iz] - Vy[ix,iy,iz]) + _dz*(Vz[ix,iy,iz+1] - Vz[ix,iy,iz]))  end
     if (ix<=size(τxx,1) && iy<=size(τxx,2) && iz<=size(τxx,3))  τxx[ix,iy,iz] = ( τxx[ix,iy,iz] + τxx_o[ix,iy,iz]*@inn_yz_Gr(ix,iy,iz) + 2.0*@inn_yz_Gdt(ix,iy,iz)*(_dx*(Vx[ix+1,iy+1,iz+1] - Vx[ix,iy+1,iz+1])))/(1.0 + @inn_yz_Gdt(ix,iy,iz)/@inn_yz_Mus(ix,iy,iz) + @inn_yz_Gr(ix,iy,iz))  end
     if (ix<=size(τyy,1) && iy<=size(τyy,2) && iz<=size(τyy,3))  τyy[ix,iy,iz] = ( τyy[ix,iy,iz] + τyy_o[ix,iy,iz]*@inn_xz_Gr(ix,iy,iz) + 2.0*@inn_xz_Gdt(ix,iy,iz)*(_dy*(Vy[ix+1,iy+1,iz+1] - Vy[ix+1,iy,iz+1])))/(1.0 + @inn_xz_Gdt(ix,iy,iz)/@inn_xz_Mus(ix,iy,iz) + @inn_xz_Gr(ix,iy,iz))  end
@@ -135,7 +135,7 @@ end
     CFL        = 0.8/sqrt(3)       # CFL number
     ε          = 1e-8              # nonlinear absolute tolerence
     # nx, ny, nz = 127, 127, 127     # numerical grid resolution; should be a mulitple of 32-1 for optimal GPU perf
-    b_width    = (8, 4, 4)         # boundary width for comm/comp overlap
+    b_width    = (16, 8, 4)         # boundary width for comm/comp overlap
     # Derived numerics
     me, dims, nprocs = init_global_grid(nx, ny, nz) # MPI initialisation
     @static if USE_GPU select_device() end    # select one GPU per MPI local rank (if >1 GPU per node)
@@ -175,7 +175,7 @@ end
     Vz         = Data.Array(  εbg.*[(z_g(iz,dz,Vz) +0.5*dz -0.5*lz) for ix=1:size(Vz,1), iy=1:size(Vz,2), iz=1:size(Vz,3)] )
     Mus        = μs0*ones(nx,ny,nz)    
     Mus[Rad2.<1.0] .= μsi
-    Mus        = Data.Array( Mus )
+    Mus        = Data.Array(Mus)
     Mus2      .= Mus
     for ism=1:10#15
         @hide_communication b_width begin # communication/computation overlap

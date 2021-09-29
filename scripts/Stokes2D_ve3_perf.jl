@@ -9,7 +9,7 @@ using ParallelStencil
 using ParallelStencil.FiniteDifferences2D
 @static if USE_GPU
     @init_parallel_stencil(CUDA, Float64, 2)
-    CUDA.device!(6)
+    # CUDA.device!(6)
 else
     @init_parallel_stencil(Threads, Float64, 2)
 end

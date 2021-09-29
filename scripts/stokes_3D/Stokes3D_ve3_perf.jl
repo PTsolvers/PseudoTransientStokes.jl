@@ -167,7 +167,7 @@ end
     Vz         = Data.Array(  εbg.*[((iz-1)*dz -0.5*lz) for ix=1:size(Vz,1), iy=1:size(Vz,2), iz=1:size(Vz,3)] )
     Mus        = μs0*ones(nx,ny,nz)    
     Mus[Rad2.<1.0] .= μsi
-    Mus        = Data.Array( Mus )
+    Mus        = Data.Array(Mus)
     Mus2      .= Mus
     for ism=1:10#15
         @parallel smooth!(Mus2, Mus, 1.0)
