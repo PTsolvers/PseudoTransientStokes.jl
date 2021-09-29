@@ -122,9 +122,9 @@ end
     εbg        = 1.0               # background strain-rate
     dt         = μs0/(G*ξ)
     # Numerics
-    nt         = 5                 # number of time steps
-    iterMax    = 2e5               # maximum number of pseudo-transient iterations
-    nout       = 200               # error checking frequency
+    nt         = 1#5                 # number of time steps
+    iterMax    = 200#2e5               # maximum number of pseudo-transient iterations
+    nout       = 2000               # error checking frequency
     Re         = 6.0π              # Reynolds number
     r          = 1.0               # Bulk to shear elastic modulus ratio
     CFL        = 0.8/sqrt(3)       # CFL number
@@ -214,7 +214,7 @@ end
             end
         end
         ittot += iter; t += dt
-        push!(evo_t, t); push!(evo_τzz, maximum(τzz))
+        # push!(evo_t, t); push!(evo_τzz, maximum(τzz))
     end
     # Performance
     wtime    = Base.time() - t_tic
@@ -236,7 +236,7 @@ end
     if do_save
         !ispath("../../output") && mkdir("../../output")
         open("../../output/out_Stokes3D_ve3_perf.txt","a") do io
-            println(io, "$(nx) $(ny) $(nz) $(ittot) $(nt)")
+            println(io, "$(nx) $(ny) $(nz) $(ittot) $(wtime) $(A_eff) $(wtime_it) $(T_eff)")
         end
     end
     if do_save_viz

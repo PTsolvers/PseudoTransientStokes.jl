@@ -12,6 +12,8 @@ mpirun_=$(which mpirun)
 # RESOL=( 31 63 127 255 511 )
 RESOL=( 127 ) # for visu
 
+RUN="Stokes3D_ve3_multixpu"
+
 USE_GPU=true
 
 DO_VIZ=false
@@ -34,6 +36,6 @@ fi
 
 for i in "${RESOL[@]}"; do
 
-    $mpirun_ -np 8 -rf gpu_rankfile_node40 ./submit_julia.sh $i $USE_GPU $DO_VIZ $DO_SAVE $DO_SAVE_VIZ
+    $mpirun_ -np 8 -rf gpu_rankfile_node40 ./submit_julia.sh $i $USE_GPU $DO_VIZ $DO_SAVE $DO_SAVE_VIZ $RUN
 
 done

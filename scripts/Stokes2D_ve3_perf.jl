@@ -180,13 +180,13 @@ end
     end
     if do_save
         !ispath("../output") && mkdir("../output")
-        open("../output/out_Stokes2D_ve3.txt","a") do io
-            println(io, "$(nx) $(ny) $(ittot) $(nt)")
+        open("../output/out_Stokes2D_ve3_perf.txt","a") do io
+            println(io, "$(nx) $(ny) $(ittot) $(t_toc) $(A_eff) $(t_it) $(T_eff)")
         end
     end
     if do_save_viz
         !ispath("../out_visu") && mkdir("../out_visu")
-        matwrite("../out_visu/Stokes_2D_ve3.mat", Dict("Pt_2D"=> Array(Pt), "Mus_2D"=> Array(Mus), "Txy_2D"=> Array(τxy), "Vy_2D"=> Array(Vy), "dx_2D"=> dx, "dy_2D"=> dy); compress = true)
+        matwrite("../out_visu/Stokes_2D_ve3_perf.mat", Dict("Pt_2D"=> Array(Pt), "Mus_2D"=> Array(Mus), "Txy_2D"=> Array(τxy), "Vy_2D"=> Array(Vy), "dx_2D"=> dx, "dy_2D"=> dy); compress = true)
     end
     return
 end
