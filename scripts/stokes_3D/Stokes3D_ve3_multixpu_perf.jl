@@ -137,7 +137,7 @@ end
     # nx, ny, nz = 127, 127, 127     # numerical grid resolution; should be a mulitple of 32-1 for optimal GPU perf
     b_width    = (8, 4, 4)         # boundary width for comm/comp overlap
     # Derived numerics
-    me, dims   = init_global_grid(nx, ny, nz) # MPI initialisation
+    me, dims, nprocs = init_global_grid(nx, ny, nz) # MPI initialisation
     @static if USE_GPU select_device() end    # select one GPU per MPI local rank (if >1 GPU per node)
     dx, dy, dz = lx/nx_g(), ly/ny_g(), lz/nz_g()      # cell sizes
     max_lxyz   = max(lx,ly,lz)
@@ -275,7 +275,7 @@ end
     if me==0 && do_save
         !ispath("../../output") && mkdir("../../output")
         open("../../output/out_Stokes3D_ve3_xpu_perf.txt","a") do io
-            println(io, "$(nx_g()) $(ny_g()) $(nz_g()) $(ittot) $(wtime) $(A_eff) $(wtime_it) $(T_eff)")
+            println(io, "$(nprocs) $(nx_g()) $(ny_g()) $(nz_g()) $(ittot) $(wtime) $(A_eff) $(wtime_it) $(T_eff)")
         end
     end
     if me==0 && do_save_viz

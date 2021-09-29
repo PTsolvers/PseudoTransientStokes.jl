@@ -236,7 +236,7 @@ end
     if do_save
         !ispath("../../output") && mkdir("../../output")
         open("../../output/out_Stokes3D_ve3_perf.txt","a") do io
-            println(io, "$(nx) $(ny) $(nz) $(ittot) $(wtime) $(A_eff) $(wtime_it) $(T_eff)")
+            println(io, "1 $(nx) $(ny) $(nz) $(ittot) $(wtime) $(A_eff) $(wtime_it) $(T_eff)")
         end
     end
     if do_save_viz
