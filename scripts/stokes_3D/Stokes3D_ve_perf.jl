@@ -31,9 +31,9 @@ end
 end
 
 macro Mu_eff() esc(:(1.0/(1.0/@all(Musτ) + 1.0/(G*dt)))) end
-@parallel function compute_iter_params!(dt_Rho::Data.Array, Gdt::Data.Array, Musτ::Data.Array, Vpdt::Data.Number, G::Data.Number, dt::Data.Number, Re::Data.Number, r::Data.Number, max_lxyz::Data.Number)
-    @all(dt_Rho) = Vpdt*max_lxyz/Re/@Mu_eff()
-    @all(Gdt)    = Vpdt^2/@all(dt_Rho)/(r+2)
+@parallel function compute_iter_params!(dτ_Rho::Data.Array, Gdτ::Data.Array, Musτ::Data.Array, Vpdτ::Data.Number, G::Data.Number, dt::Data.Number, Re::Data.Number, r::Data.Number, max_lxyz::Data.Number)
+    @all(dτ_Rho) = Vpdτ*max_lxyz/Re/@Mu_eff()
+    @all(Gdτ)    = Vpdτ^2/@all(dτ_Rho)/(r+2)
     return
 end
 
@@ -47,42 +47,42 @@ end
     return
 end
 
-macro inn_yz_Gdt(ix,iy,iz) esc(:( Gdt[$ix  ,$iy+1,$iz+1] )) end
-macro inn_xz_Gdt(ix,iy,iz) esc(:( Gdt[$ix+1,$iy  ,$iz+1] )) end
-macro inn_xy_Gdt(ix,iy,iz) esc(:( Gdt[$ix+1,$iy+1,$iz  ] )) end
+macro inn_yz_Gdτ(ix,iy,iz) esc(:( Gdτ[$ix  ,$iy+1,$iz+1] )) end
+macro inn_xz_Gdτ(ix,iy,iz) esc(:( Gdτ[$ix+1,$iy  ,$iz+1] )) end
+macro inn_xy_Gdτ(ix,iy,iz) esc(:( Gdτ[$ix+1,$iy+1,$iz  ] )) end
 macro inn_yz_Mus(ix,iy,iz) esc(:( Mus[$ix  ,$iy+1,$iz+1] )) end
 macro inn_xz_Mus(ix,iy,iz) esc(:( Mus[$ix+1,$iy  ,$iz+1] )) end
 macro inn_xy_Mus(ix,iy,iz) esc(:( Mus[$ix+1,$iy+1,$iz  ] )) end
-macro av_xyi_Gdt(ix,iy,iz) esc(:( (Gdt[$ix  ,$iy  ,$iz+1] + Gdt[$ix+1,$iy  ,$iz+1] + Gdt[$ix  ,$iy+1,$iz+1] + Gdt[$ix+1,$iy+1,$iz+1])*0.25 )) end
-macro av_xzi_Gdt(ix,iy,iz) esc(:( (Gdt[$ix  ,$iy+1,$iz  ] + Gdt[$ix+1,$iy+1,$iz  ] + Gdt[$ix  ,$iy+1,$iz+1] + Gdt[$ix+1,$iy+1,$iz+1])*0.25 )) end
-macro av_yzi_Gdt(ix,iy,iz) esc(:( (Gdt[$ix+1,$iy  ,$iz  ] + Gdt[$ix+1,$iy+1,$iz  ] + Gdt[$ix+1,$iy  ,$iz+1] + Gdt[$ix+1,$iy+1,$iz+1])*0.25 )) end
+macro av_xyi_Gdτ(ix,iy,iz) esc(:( (Gdτ[$ix  ,$iy  ,$iz+1] + Gdτ[$ix+1,$iy  ,$iz+1] + Gdτ[$ix  ,$iy+1,$iz+1] + Gdτ[$ix+1,$iy+1,$iz+1])*0.25 )) end
+macro av_xzi_Gdτ(ix,iy,iz) esc(:( (Gdτ[$ix  ,$iy+1,$iz  ] + Gdτ[$ix+1,$iy+1,$iz  ] + Gdτ[$ix  ,$iy+1,$iz+1] + Gdτ[$ix+1,$iy+1,$iz+1])*0.25 )) end
+macro av_yzi_Gdτ(ix,iy,iz) esc(:( (Gdτ[$ix+1,$iy  ,$iz  ] + Gdτ[$ix+1,$iy+1,$iz  ] + Gdτ[$ix+1,$iy  ,$iz+1] + Gdτ[$ix+1,$iy+1,$iz+1])*0.25 )) end
 macro av_xyi_Mus(ix,iy,iz) esc(:( (Mus[$ix  ,$iy  ,$iz+1] + Mus[$ix+1,$iy  ,$iz+1] + Mus[$ix  ,$iy+1,$iz+1] + Mus[$ix+1,$iy+1,$iz+1])*0.25 )) end
 macro av_xzi_Mus(ix,iy,iz) esc(:( (Mus[$ix  ,$iy+1,$iz  ] + Mus[$ix+1,$iy+1,$iz  ] + Mus[$ix  ,$iy+1,$iz+1] + Mus[$ix+1,$iy+1,$iz+1])*0.25 )) end
 macro av_yzi_Mus(ix,iy,iz) esc(:( (Mus[$ix+1,$iy  ,$iz  ] + Mus[$ix+1,$iy+1,$iz  ] + Mus[$ix+1,$iy  ,$iz+1] + Mus[$ix+1,$iy+1,$iz+1])*0.25 )) end
-macro inn_yz_Gr(ix,iy,iz) esc(:( @inn_yz_Gdt($ix,$iy,$iz)/(G*dt) )) end
-macro inn_xz_Gr(ix,iy,iz) esc(:( @inn_xz_Gdt($ix,$iy,$iz)/(G*dt) )) end
-macro inn_xy_Gr(ix,iy,iz) esc(:( @inn_xy_Gdt($ix,$iy,$iz)/(G*dt) )) end
-macro av_xyi_Gr(ix,iy,iz) esc(:( @av_xyi_Gdt($ix,$iy,$iz)/(G*dt) )) end
-macro av_xzi_Gr(ix,iy,iz) esc(:( @av_xzi_Gdt($ix,$iy,$iz)/(G*dt) )) end
-macro av_yzi_Gr(ix,iy,iz) esc(:( @av_yzi_Gdt($ix,$iy,$iz)/(G*dt) )) end
-@parallel_indices (ix,iy,iz) function compute_Pt_τ!(Pt::Data.Array, τxx::Data.Array, τyy::Data.Array, τzz::Data.Array, τxy::Data.Array, τxz::Data.Array, τyz::Data.Array, τxx_o::Data.Array, τyy_o::Data.Array, τzz_o::Data.Array, τxy_o::Data.Array, τxz_o::Data.Array, τyz_o::Data.Array, Vx::Data.Array, Vy::Data.Array, Vz::Data.Array, Mus::Data.Array, Gdt::Data.Array, r::Data.Number, G::Data.Number, dt::Data.Number, _dx::Data.Number, _dy::Data.Number, _dz::Data.Number)
-    if (ix<=size(Pt,1)  && iy<=size(Pt,2)  && iz<=size(Pt,3))    Pt[ix,iy,iz] = Pt[ix,iy,iz] - r*Gdt[ix,iy,iz]*(_dx*(Vx[ix+1,iy,iz] - Vx[ix,iy,iz]) + _dy*(Vy[ix,iy+1,iz] - Vy[ix,iy,iz]) + _dz*(Vz[ix,iy,iz+1] - Vz[ix,iy,iz]))  end
-    if (ix<=size(τxx,1) && iy<=size(τxx,2) && iz<=size(τxx,3))  τxx[ix,iy,iz] = ( τxx[ix,iy,iz] + τxx_o[ix,iy,iz]*@inn_yz_Gr(ix,iy,iz) + 2.0*@inn_yz_Gdt(ix,iy,iz)*(_dx*(Vx[ix+1,iy+1,iz+1] - Vx[ix,iy+1,iz+1])))/(1.0 + @inn_yz_Gdt(ix,iy,iz)/@inn_yz_Mus(ix,iy,iz) + @inn_yz_Gr(ix,iy,iz))  end
-    if (ix<=size(τyy,1) && iy<=size(τyy,2) && iz<=size(τyy,3))  τyy[ix,iy,iz] = ( τyy[ix,iy,iz] + τyy_o[ix,iy,iz]*@inn_xz_Gr(ix,iy,iz) + 2.0*@inn_xz_Gdt(ix,iy,iz)*(_dy*(Vy[ix+1,iy+1,iz+1] - Vy[ix+1,iy,iz+1])))/(1.0 + @inn_xz_Gdt(ix,iy,iz)/@inn_xz_Mus(ix,iy,iz) + @inn_xz_Gr(ix,iy,iz))  end
-    if (ix<=size(τzz,1) && iy<=size(τzz,2) && iz<=size(τzz,3))  τzz[ix,iy,iz] = ( τzz[ix,iy,iz] + τzz_o[ix,iy,iz]*@inn_xy_Gr(ix,iy,iz) + 2.0*@inn_xy_Gdt(ix,iy,iz)*(_dz*(Vz[ix+1,iy+1,iz+1] - Vz[ix+1,iy+1,iz])))/(1.0 + @inn_xy_Gdt(ix,iy,iz)/@inn_xy_Mus(ix,iy,iz) + @inn_xy_Gr(ix,iy,iz))  end
-    if (ix<=size(τxy,1) && iy<=size(τxy,2) && iz<=size(τxy,3))  τxy[ix,iy,iz] = ( τxy[ix,iy,iz] + τxy_o[ix,iy,iz]*@av_xyi_Gr(ix,iy,iz) + 2.0*@av_xyi_Gdt(ix,iy,iz)*(0.5*(_dy*(Vx[ix+1,iy+1,iz+1] - Vx[ix+1,iy,iz+1]) + _dx*(Vy[ix+1,iy+1,iz+1] - Vy[ix,iy+1,iz+1])))) / (1.0 + @av_xyi_Gdt(ix,iy,iz)/@av_xyi_Mus(ix,iy,iz) + @av_xyi_Gr(ix,iy,iz))  end
-    if (ix<=size(τxz,1) && iy<=size(τxz,2) && iz<=size(τxz,3))  τxz[ix,iy,iz] = ( τxz[ix,iy,iz] + τxz_o[ix,iy,iz]*@av_xzi_Gr(ix,iy,iz) + 2.0*@av_xzi_Gdt(ix,iy,iz)*(0.5*(_dz*(Vx[ix+1,iy+1,iz+1] - Vx[ix+1,iy+1,iz]) + _dx*(Vz[ix+1,iy+1,iz+1] - Vz[ix,iy+1,iz+1])))) / (1.0 + @av_xzi_Gdt(ix,iy,iz)/@av_xzi_Mus(ix,iy,iz) + @av_xzi_Gr(ix,iy,iz))  end
-    if (ix<=size(τyz,1) && iy<=size(τyz,2) && iz<=size(τyz,3))  τyz[ix,iy,iz] = ( τyz[ix,iy,iz] + τyz_o[ix,iy,iz]*@av_yzi_Gr(ix,iy,iz) + 2.0*@av_yzi_Gdt(ix,iy,iz)*(0.5*(_dz*(Vy[ix+1,iy+1,iz+1] - Vy[ix+1,iy+1,iz]) + _dy*(Vz[ix+1,iy+1,iz+1] - Vz[ix+1,iy,iz+1])))) / (1.0 + @av_yzi_Gdt(ix,iy,iz)/@av_yzi_Mus(ix,iy,iz) + @av_yzi_Gr(ix,iy,iz))  end
+macro inn_yz_Gr(ix,iy,iz) esc(:( @inn_yz_Gdτ($ix,$iy,$iz)/(G*dt) )) end
+macro inn_xz_Gr(ix,iy,iz) esc(:( @inn_xz_Gdτ($ix,$iy,$iz)/(G*dt) )) end
+macro inn_xy_Gr(ix,iy,iz) esc(:( @inn_xy_Gdτ($ix,$iy,$iz)/(G*dt) )) end
+macro av_xyi_Gr(ix,iy,iz) esc(:( @av_xyi_Gdτ($ix,$iy,$iz)/(G*dt) )) end
+macro av_xzi_Gr(ix,iy,iz) esc(:( @av_xzi_Gdτ($ix,$iy,$iz)/(G*dt) )) end
+macro av_yzi_Gr(ix,iy,iz) esc(:( @av_yzi_Gdτ($ix,$iy,$iz)/(G*dt) )) end
+@parallel_indices (ix,iy,iz) function compute_Pt_τ!(Pt::Data.Array, τxx::Data.Array, τyy::Data.Array, τzz::Data.Array, τxy::Data.Array, τxz::Data.Array, τyz::Data.Array, τxx_o::Data.Array, τyy_o::Data.Array, τzz_o::Data.Array, τxy_o::Data.Array, τxz_o::Data.Array, τyz_o::Data.Array, Vx::Data.Array, Vy::Data.Array, Vz::Data.Array, Mus::Data.Array, Gdτ::Data.Array, r::Data.Number, G::Data.Number, dt::Data.Number, _dx::Data.Number, _dy::Data.Number, _dz::Data.Number)
+    if (ix<=size(Pt,1)  && iy<=size(Pt,2)  && iz<=size(Pt,3))    Pt[ix,iy,iz] = Pt[ix,iy,iz] - r*Gdτ[ix,iy,iz]*(_dx*(Vx[ix+1,iy,iz] - Vx[ix,iy,iz]) + _dy*(Vy[ix,iy+1,iz] - Vy[ix,iy,iz]) + _dz*(Vz[ix,iy,iz+1] - Vz[ix,iy,iz]))  end
+    if (ix<=size(τxx,1) && iy<=size(τxx,2) && iz<=size(τxx,3))  τxx[ix,iy,iz] = ( τxx[ix,iy,iz] + τxx_o[ix,iy,iz]*@inn_yz_Gr(ix,iy,iz) + 2.0*@inn_yz_Gdτ(ix,iy,iz)*(_dx*(Vx[ix+1,iy+1,iz+1] - Vx[ix,iy+1,iz+1])))/(1.0 + @inn_yz_Gdτ(ix,iy,iz)/@inn_yz_Mus(ix,iy,iz) + @inn_yz_Gr(ix,iy,iz))  end
+    if (ix<=size(τyy,1) && iy<=size(τyy,2) && iz<=size(τyy,3))  τyy[ix,iy,iz] = ( τyy[ix,iy,iz] + τyy_o[ix,iy,iz]*@inn_xz_Gr(ix,iy,iz) + 2.0*@inn_xz_Gdτ(ix,iy,iz)*(_dy*(Vy[ix+1,iy+1,iz+1] - Vy[ix+1,iy,iz+1])))/(1.0 + @inn_xz_Gdτ(ix,iy,iz)/@inn_xz_Mus(ix,iy,iz) + @inn_xz_Gr(ix,iy,iz))  end
+    if (ix<=size(τzz,1) && iy<=size(τzz,2) && iz<=size(τzz,3))  τzz[ix,iy,iz] = ( τzz[ix,iy,iz] + τzz_o[ix,iy,iz]*@inn_xy_Gr(ix,iy,iz) + 2.0*@inn_xy_Gdτ(ix,iy,iz)*(_dz*(Vz[ix+1,iy+1,iz+1] - Vz[ix+1,iy+1,iz])))/(1.0 + @inn_xy_Gdτ(ix,iy,iz)/@inn_xy_Mus(ix,iy,iz) + @inn_xy_Gr(ix,iy,iz))  end
+    if (ix<=size(τxy,1) && iy<=size(τxy,2) && iz<=size(τxy,3))  τxy[ix,iy,iz] = ( τxy[ix,iy,iz] + τxy_o[ix,iy,iz]*@av_xyi_Gr(ix,iy,iz) + 2.0*@av_xyi_Gdτ(ix,iy,iz)*(0.5*(_dy*(Vx[ix+1,iy+1,iz+1] - Vx[ix+1,iy,iz+1]) + _dx*(Vy[ix+1,iy+1,iz+1] - Vy[ix,iy+1,iz+1])))) / (1.0 + @av_xyi_Gdτ(ix,iy,iz)/@av_xyi_Mus(ix,iy,iz) + @av_xyi_Gr(ix,iy,iz))  end
+    if (ix<=size(τxz,1) && iy<=size(τxz,2) && iz<=size(τxz,3))  τxz[ix,iy,iz] = ( τxz[ix,iy,iz] + τxz_o[ix,iy,iz]*@av_xzi_Gr(ix,iy,iz) + 2.0*@av_xzi_Gdτ(ix,iy,iz)*(0.5*(_dz*(Vx[ix+1,iy+1,iz+1] - Vx[ix+1,iy+1,iz]) + _dx*(Vz[ix+1,iy+1,iz+1] - Vz[ix,iy+1,iz+1])))) / (1.0 + @av_xzi_Gdτ(ix,iy,iz)/@av_xzi_Mus(ix,iy,iz) + @av_xzi_Gr(ix,iy,iz))  end
+    if (ix<=size(τyz,1) && iy<=size(τyz,2) && iz<=size(τyz,3))  τyz[ix,iy,iz] = ( τyz[ix,iy,iz] + τyz_o[ix,iy,iz]*@av_yzi_Gr(ix,iy,iz) + 2.0*@av_yzi_Gdτ(ix,iy,iz)*(0.5*(_dz*(Vy[ix+1,iy+1,iz+1] - Vy[ix+1,iy+1,iz]) + _dy*(Vz[ix+1,iy+1,iz+1] - Vz[ix+1,iy,iz+1])))) / (1.0 + @av_yzi_Gdτ(ix,iy,iz)/@av_yzi_Mus(ix,iy,iz) + @av_yzi_Gr(ix,iy,iz))  end
     return
 end
 
-macro av_xi_dt_Rho(ix,iy,iz)  esc(:( (dt_Rho[$ix  ,$iy+1,$iz+1] + dt_Rho[$ix+1,$iy+1,$iz+1])*0.5 )) end
-macro av_yi_dt_Rho(ix,iy,iz)  esc(:( (dt_Rho[$ix+1,$iy  ,$iz+1] + dt_Rho[$ix+1,$iy+1,$iz+1])*0.5 )) end
-macro av_zi_dt_Rho(ix,iy,iz)  esc(:( (dt_Rho[$ix+1,$iy+1,$iz  ] + dt_Rho[$ix+1,$iy+1,$iz+1])*0.5 )) end
-@parallel_indices (ix,iy,iz) function compute_V!(Vx::Data.Array, Vy::Data.Array, Vz::Data.Array, Pt::Data.Array, τxx::Data.Array, τyy::Data.Array, τzz::Data.Array, τxy::Data.Array, τxz::Data.Array, τyz::Data.Array, dt_Rho::Data.Array, _dx::Data.Number, _dy::Data.Number, _dz::Data.Number, nx_1, nx_2, ny_1, ny_2, nz_1, nz_2)
-    if (ix<=nx_1 && iy<=ny_2 && iz<=nz_2)  Vx[ix+1,iy+1,iz+1] = Vx[ix+1,iy+1,iz+1] + (_dx*(τxx[ix+1,iy,iz] - τxx[ix,iy,iz]) + _dy*(τxy[ix,iy+1,iz] - τxy[ix,iy,iz]) + _dz*(τxz[ix,iy,iz+1] - τxz[ix,iy,iz]) - _dx*(Pt[ix+1,iy+1,iz+1] - Pt[ix,iy+1,iz+1]))*@av_xi_dt_Rho(ix,iy,iz)  end
-    if (ix<=nx_2 && iy<=ny_1 && iz<=nz_2)  Vy[ix+1,iy+1,iz+1] = Vy[ix+1,iy+1,iz+1] + (_dy*(τyy[ix,iy+1,iz] - τyy[ix,iy,iz]) + _dx*(τxy[ix+1,iy,iz] - τxy[ix,iy,iz]) + _dz*(τyz[ix,iy,iz+1] - τyz[ix,iy,iz]) - _dy*(Pt[ix+1,iy+1,iz+1] - Pt[ix+1,iy,iz+1]))*@av_yi_dt_Rho(ix,iy,iz)  end
-    if (ix<=nx_2 && iy<=ny_2 && iz<=nz_1)  Vz[ix+1,iy+1,iz+1] = Vz[ix+1,iy+1,iz+1] + (_dz*(τzz[ix,iy,iz+1] - τzz[ix,iy,iz]) + _dx*(τxz[ix+1,iy,iz] - τxz[ix,iy,iz]) + _dy*(τyz[ix,iy+1,iz] - τyz[ix,iy,iz]) - _dz*(Pt[ix+1,iy+1,iz+1] - Pt[ix+1,iy+1,iz]))*@av_zi_dt_Rho(ix,iy,iz)  end
+macro av_xi_dτ_Rho(ix,iy,iz)  esc(:( (dτ_Rho[$ix  ,$iy+1,$iz+1] + dτ_Rho[$ix+1,$iy+1,$iz+1])*0.5 )) end
+macro av_yi_dτ_Rho(ix,iy,iz)  esc(:( (dτ_Rho[$ix+1,$iy  ,$iz+1] + dτ_Rho[$ix+1,$iy+1,$iz+1])*0.5 )) end
+macro av_zi_dτ_Rho(ix,iy,iz)  esc(:( (dτ_Rho[$ix+1,$iy+1,$iz  ] + dτ_Rho[$ix+1,$iy+1,$iz+1])*0.5 )) end
+@parallel_indices (ix,iy,iz) function compute_V!(Vx::Data.Array, Vy::Data.Array, Vz::Data.Array, Pt::Data.Array, τxx::Data.Array, τyy::Data.Array, τzz::Data.Array, τxy::Data.Array, τxz::Data.Array, τyz::Data.Array, dτ_Rho::Data.Array, _dx::Data.Number, _dy::Data.Number, _dz::Data.Number, nx_1, nx_2, ny_1, ny_2, nz_1, nz_2)
+    if (ix<=nx_1 && iy<=ny_2 && iz<=nz_2)  Vx[ix+1,iy+1,iz+1] = Vx[ix+1,iy+1,iz+1] + (_dx*(τxx[ix+1,iy,iz] - τxx[ix,iy,iz]) + _dy*(τxy[ix,iy+1,iz] - τxy[ix,iy,iz]) + _dz*(τxz[ix,iy,iz+1] - τxz[ix,iy,iz]) - _dx*(Pt[ix+1,iy+1,iz+1] - Pt[ix,iy+1,iz+1]))*@av_xi_dτ_Rho(ix,iy,iz)  end
+    if (ix<=nx_2 && iy<=ny_1 && iz<=nz_2)  Vy[ix+1,iy+1,iz+1] = Vy[ix+1,iy+1,iz+1] + (_dy*(τyy[ix,iy+1,iz] - τyy[ix,iy,iz]) + _dx*(τxy[ix+1,iy,iz] - τxy[ix,iy,iz]) + _dz*(τyz[ix,iy,iz+1] - τyz[ix,iy,iz]) - _dy*(Pt[ix+1,iy+1,iz+1] - Pt[ix+1,iy,iz+1]))*@av_yi_dτ_Rho(ix,iy,iz)  end
+    if (ix<=nx_2 && iy<=ny_2 && iz<=nz_1)  Vz[ix+1,iy+1,iz+1] = Vz[ix+1,iy+1,iz+1] + (_dz*(τzz[ix,iy,iz+1] - τzz[ix,iy,iz]) + _dx*(τxz[ix+1,iy,iz] - τxz[ix,iy,iz]) + _dy*(τyz[ix,iy+1,iz] - τyz[ix,iy,iz]) - _dz*(Pt[ix+1,iy+1,iz+1] - Pt[ix+1,iy+1,iz]))*@av_zi_dτ_Rho(ix,iy,iz)  end
     return
 end
 
@@ -133,12 +133,12 @@ end
     # Derived numerics
     dx, dy, dz = lx/nx, ly/ny, lz/nz      # cell sizes
     max_lxyz   = max(lx,ly,lz)
-    Vpdt       = min(dx,dy,dz)*CFL
+    Vpdτ       = min(dx,dy,dz)*CFL
     _dx, _dy, _dz = 1.0/dx, 1.0/dy, 1.0/dz
     # Array allocations
     Pt         = @zeros(nx  ,ny  ,nz  )
-    dt_Rho     = @zeros(nx  ,ny  ,nz  )
-    Gdt        = @zeros(nx  ,ny  ,nz  )
+    dτ_Rho     = @zeros(nx  ,ny  ,nz  )
+    Gdτ        = @zeros(nx  ,ny  ,nz  )
     ∇V         = @zeros(nx  ,ny  ,nz  )
     Vy         = @zeros(nx  ,ny+1,nz  )
     τxx        = @zeros(nx  ,ny-2,nz-2)
@@ -187,7 +187,7 @@ end
         xv, zv  = 0:dx:lx, 0:dz:lz
     end
     # Time loop
-    @parallel compute_iter_params!(dt_Rho, Gdt, Musτ, Vpdt, G, dt, Re, r, max_lxyz)
+    @parallel compute_iter_params!(dτ_Rho, Gdτ, Musτ, Vpdτ, G, dt, Re, r, max_lxyz)
     t=0.0; ittot=0; evo_t=[]; evo_τzz=[]; t_tic = 0.0
     for it = 1:nt
         err=2*ε; iter=0; err_evo1=[]; err_evo2=[]
@@ -195,8 +195,8 @@ end
         # Pseudo-transient iteration
         while err > ε && iter <= iterMax
             if (it==1 && iter==11) t_tic = Base.time() end
-            @parallel compute_Pt_τ!(Pt, τxx, τyy, τzz, τxy, τxz, τyz, τxx_o, τyy_o, τzz_o, τxy_o, τxz_o, τyz_o, Vx, Vy, Vz, Mus, Gdt, r, G, dt, _dx, _dy, _dz)
-            @parallel compute_V!(Vx, Vy, Vz, Pt, τxx, τyy, τzz, τxy, τxz, τyz, dt_Rho, _dx, _dy, _dz, nx_1, nx_2, ny_1, ny_2, nz_1, nz_2)
+            @parallel compute_Pt_τ!(Pt, τxx, τyy, τzz, τxy, τxz, τyz, τxx_o, τyy_o, τzz_o, τxy_o, τxz_o, τyz_o, Vx, Vy, Vz, Mus, Gdτ, r, G, dt, _dx, _dy, _dz)
+            @parallel compute_V!(Vx, Vy, Vz, Pt, τxx, τyy, τzz, τxy, τxz, τyz, dτ_Rho, _dx, _dy, _dz, nx_1, nx_2, ny_1, ny_2, nz_1, nz_2)
             @parallel (1:size(Vy,2), 1:size(Vy,3)) bc_x!(Vy)
             @parallel (1:size(Vz,2), 1:size(Vz,3)) bc_x!(Vz)
             @parallel (1:size(Vx,1), 1:size(Vx,3)) bc_y!(Vx)

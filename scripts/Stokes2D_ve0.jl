@@ -187,13 +187,13 @@ end
     end
     if do_save
         !ispath("../output") && mkdir("../output")
-        open("../output/out_Stokes2D_ve.txt","a") do io
+        open("../output/out_Stokes2D_ve0.txt","a") do io
             println(io, "$(nx) $(ny) $(ittot) $(nt)")
         end
     end
     if do_save_viz
         !ispath("../out_visu") && mkdir("../out_visu")
-        matwrite("../out_visu/Stokes_2D_ve.mat", Dict("Pt_2D"=> Array(Pt), "Mus_2D"=> Array(Mus), "Txy_2D"=> Array(τxy), "Vy_2D"=> Array(Vy), "dx_2D"=> dx, "dy_2D"=> dy); compress = true)
+        matwrite("../out_visu/Stokes_2D_ve0.mat", Dict("Pt_2D"=> Array(Pt), "Mus_2D"=> Array(Mus), "Txy_2D"=> Array(τxy), "Vy_2D"=> Array(Vy), "dx_2D"=> dx, "dy_2D"=> dy); compress = true)
     end
     return
 end

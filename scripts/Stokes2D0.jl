@@ -160,7 +160,7 @@ end
     end
     if do_save
         !ispath("../output") && mkdir("../output")
-        open("../output/out_Stokes2D.txt","a") do io
+        open("../output/out_Stokes2D0.txt","a") do io
             println(io, "$(nx) $(ny) $(iter)")
         end
     end

@@ -25,9 +25,9 @@ end
 end
 
 macro Mu_eff() esc(:(1.0/(1.0/@all(Musτ) + 1.0/(G*dt)))) end
-@parallel function compute_iter_params!(dt_Rho::Data.Array, Gdt::Data.Array, Musτ::Data.Array, Vpdt::Data.Number, G::Data.Number, dt::Data.Number, Re::Data.Number, r::Data.Number, max_lxy::Data.Number)
-    @all(dt_Rho) = Vpdt*max_lxy/Re/@Mu_eff()
-    @all(Gdt)    = Vpdt^2/@all(dt_Rho)/(r+2)
+@parallel function compute_iter_params!(dτ_Rho::Data.Array, Gdτ::Data.Array, Musτ::Data.Array, Vpdτ::Data.Number, G::Data.Number, dt::Data.Number, Re::Data.Number, r::Data.Number, max_lxy::Data.Number)
+    @all(dτ_Rho) = Vpdτ*max_lxy/Re/@Mu_eff()
+    @all(Gdτ)    = Vpdτ^2/@all(dτ_Rho)/(r+2)
     return
 end
 
@@ -38,24 +38,24 @@ end
     return
 end
 
-@parallel function compute_P!(∇V::Data.Array, Pt::Data.Array, Gdt::Data.Array, Vx::Data.Array, Vy::Data.Array, r::Data.Number, dx::Data.Number, dy::Data.Number)
+@parallel function compute_P!(∇V::Data.Array, Pt::Data.Array, Gdτ::Data.Array, Vx::Data.Array, Vy::Data.Array, r::Data.Number, dx::Data.Number, dy::Data.Number)
     @all(∇V) = @d_xa(Vx)/dx + @d_ya(Vy)/dy
-    @all(Pt) = @all(Pt) - r*@all(Gdt)*@all(∇V)
+    @all(Pt) = @all(Pt) - r*@all(Gdτ)*@all(∇V)
     return
 end
 
-macro Gr()    esc(:( @all(Gdt)/(G*dt) )) end
-macro av_Gr() esc(:(  @av(Gdt)/(G*dt) )) end
-@parallel function compute_τ!(τxx::Data.Array, τyy::Data.Array, τxy::Data.Array, τxx_o::Data.Array, τyy_o::Data.Array, τxy_o::Data.Array, Gdt::Data.Array, Vx::Data.Array, Vy::Data.Array, Mus::Data.Array, G::Data.Number, dt::Data.Number, dx::Data.Number, dy::Data.Number)
-    @all(τxx) = (@all(τxx) + @all(τxx_o)*   @Gr() + 2.0*@all(Gdt)*(@d_xa(Vx)/dx))/(1.0 + @all(Gdt)/@all(Mus) + @Gr())
-    @all(τyy) = (@all(τyy) + @all(τyy_o)*   @Gr() + 2.0*@all(Gdt)*(@d_ya(Vy)/dy))/(1.0 + @all(Gdt)/@all(Mus) + @Gr())
-    @all(τxy) = (@all(τxy) + @all(τxy_o)*@av_Gr() + 2.0*@av(Gdt)*(0.5*(@d_yi(Vx)/dy + @d_xi(Vy)/dx)))/(1.0 + @av(Gdt)/@av(Mus) + @av_Gr())
+macro Gr()    esc(:( @all(Gdτ)/(G*dt) )) end
+macro av_Gr() esc(:(  @av(Gdτ)/(G*dt) )) end
+@parallel function compute_τ!(τxx::Data.Array, τyy::Data.Array, τxy::Data.Array, τxx_o::Data.Array, τyy_o::Data.Array, τxy_o::Data.Array, Gdτ::Data.Array, Vx::Data.Array, Vy::Data.Array, Mus::Data.Array, G::Data.Number, dt::Data.Number, dx::Data.Number, dy::Data.Number)
+    @all(τxx) = (@all(τxx) + @all(τxx_o)*   @Gr() + 2.0*@all(Gdτ)*(@d_xa(Vx)/dx))/(1.0 + @all(Gdτ)/@all(Mus) + @Gr())
+    @all(τyy) = (@all(τyy) + @all(τyy_o)*   @Gr() + 2.0*@all(Gdτ)*(@d_ya(Vy)/dy))/(1.0 + @all(Gdτ)/@all(Mus) + @Gr())
+    @all(τxy) = (@all(τxy) + @all(τxy_o)*@av_Gr() + 2.0*@av(Gdτ)*(0.5*(@d_yi(Vx)/dy + @d_xi(Vy)/dx)))/(1.0 + @av(Gdτ)/@av(Mus) + @av_Gr())
     return
 end
 
-@parallel function compute_dV!(dVx::Data.Array, dVy::Data.Array, Pt::Data.Array, τxx::Data.Array, τyy::Data.Array, τxy::Data.Array, dt_Rho::Data.Array, dx::Data.Number, dy::Data.Number)
-    @all(dVx) = (@d_xi(τxx)/dx + @d_ya(τxy)/dy - @d_xi(Pt)/dx)*@av_xi(dt_Rho)
-    @all(dVy) = (@d_yi(τyy)/dy + @d_xa(τxy)/dx - @d_yi(Pt)/dy)*@av_yi(dt_Rho)
+@parallel function compute_dV!(dVx::Data.Array, dVy::Data.Array, Pt::Data.Array, τxx::Data.Array, τyy::Data.Array, τxy::Data.Array, dτ_Rho::Data.Array, dx::Data.Number, dy::Data.Number)
+    @all(dVx) = (@d_xi(τxx)/dx + @d_ya(τxy)/dy - @d_xi(Pt)/dx)*@av_xi(dτ_Rho)
+    @all(dVy) = (@d_yi(τyy)/dy + @d_xa(τxy)/dx - @d_yi(Pt)/dy)*@av_yi(dτ_Rho)
     return
 end
 
@@ -104,11 +104,11 @@ end
     # Derived numerics
     dx, dy    = lx/nx, ly/ny # cell sizes
     max_lxy   = max(lx,ly)
-    Vpdt      = min(dx,dy)*CFL
+    Vpdτ      = min(dx,dy)*CFL
     # Array allocations
     Pt        = @zeros(nx  ,ny  )
-    dt_Rho    = @zeros(nx  ,ny  )
-    Gdt       = @zeros(nx  ,ny  )
+    dτ_Rho    = @zeros(nx  ,ny  )
+    Gdτ       = @zeros(nx  ,ny  )
     ∇V        = @zeros(nx  ,ny  )
     τxx       = @zeros(nx  ,ny  )
     τyy       = @zeros(nx  ,ny  )
@@ -142,7 +142,7 @@ end
     @parallel (1:size(Musτ,2)) bc_x!(Musτ)
     @parallel (1:size(Musτ,1)) bc_y!(Musτ)
     # Time loop
-    @parallel compute_iter_params!(dt_Rho, Gdt, Musτ, Vpdt, G, dt, Re, r, max_lxy)
+    @parallel compute_iter_params!(dτ_Rho, Gdτ, Musτ, Vpdτ, G, dt, Re, r, max_lxy)
     t=0.0; ittot=0; evo_t=[]; evo_τyy=[]; err_evo1=[]; err_evo2=[]
     for it = 1:nt
         err=2*ε; iter=0
@@ -150,9 +150,9 @@ end
         # Pseudo-transient iteration
         while err > ε && iter <= iterMax
             if (it==1 && iter==11)  global wtime0 = Base.time()  end
-            @parallel compute_P!(∇V, Pt, Gdt, Vx, Vy, r, dx, dy)
-            @parallel compute_τ!(τxx, τyy, τxy, τxx_o, τyy_o, τxy_o, Gdt, Vx, Vy, Mus, G, dt, dx, dy)
-            @parallel compute_dV!(dVx, dVy, Pt, τxx, τyy, τxy, dt_Rho, dx, dy)
+            @parallel compute_P!(∇V, Pt, Gdτ, Vx, Vy, r, dx, dy)
+            @parallel compute_τ!(τxx, τyy, τxy, τxx_o, τyy_o, τxy_o, Gdτ, Vx, Vy, Mus, G, dt, dx, dy)
+            @parallel compute_dV!(dVx, dVy, Pt, τxx, τyy, τxy, dτ_Rho, dx, dy)
             @parallel compute_V!(Vx, Vy, dVx, dVy)
             @parallel (1:size(Vx,1)) bc_y!(Vx)
             @parallel (1:size(Vy,2)) bc_x!(Vy)
@@ -188,13 +188,13 @@ end
     end
     if do_save
         !ispath("../output") && mkdir("../output")
-        open("../output/out_Stokes2D_ve3.txt","a") do io
+        open("../output/out_Stokes2D_ve.txt","a") do io
             println(io, "$(nx) $(ny) $(ittot) $(nt)")
         end
     end
     if do_save_viz
         !ispath("../out_visu") && mkdir("../out_visu")
-        matwrite("../out_visu/Stokes_2D_ve3.mat", Dict("Pt_2D"=> Array(Pt), "Mus_2D"=> Array(Mus), "Txy_2D"=> Array(τxy), "Vy_2D"=> Array(Vy), "dx_2D"=> dx, "dy_2D"=> dy); compress = true)
+        matwrite("../out_visu/Stokes_2D_ve.mat", Dict("Pt_2D"=> Array(Pt), "Mus_2D"=> Array(Mus), "Txy_2D"=> Array(τxy), "Vy_2D"=> Array(Vy), "dx_2D"=> dx, "dy_2D"=> dy); compress = true)
     end
     return
 end
