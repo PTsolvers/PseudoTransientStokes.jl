@@ -1,17 +1,17 @@
 clear
 
 % load scaling_data
-fid = fopen('../output/out_Stokes2D_ve3.txt','r');
+fid = fopen('../output/out_Stokes2D_ve.txt','r');
 Stokes_2D = fscanf(fid, '%d %d %d %d', [4 Inf]);
 fclose(fid);
-fid = fopen('../output/out_Stokes3D_ve3.txt','r');
+fid = fopen('../output/out_Stokes3D_ve.txt','r');
 Stokes_3D = fscanf(fid, '%d %d %d %d %d', [5 Inf]);
 fclose(fid);
 
-fid = fopen('../output/out_Stokes2D_ve.txt','r');
+fid = fopen('../output/out_Stokes2D_ve0.txt','r');
 Stokes_2Do = fscanf(fid, '%d %d %d %d', [4 Inf]);
 fclose(fid);
-fid = fopen('../output/out_Stokes3D_ve.txt','r');
+fid = fopen('../output/out_Stokes3D_ve0.txt','r');
 Stokes_3Do = fscanf(fid, '%d %d %d %d %d', [5 Inf]);
 fclose(fid);
 

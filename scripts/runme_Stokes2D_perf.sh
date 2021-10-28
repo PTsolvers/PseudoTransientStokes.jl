@@ -21,7 +21,7 @@ DO_SAVE_VIZ=false
 
 if [ "$DO_SAVE" = "true" ]; then
 
-    FILE=../output/out_Stokes2D_ve3_perf.txt
+    FILE=../output/out_Stokes2D_ve_perf.txt
     
     if [ -f "$FILE" ]; then
         echo "Systematic results (file $FILE) already exists. Remove to continue."
@@ -35,8 +35,8 @@ for i in "${RESOL[@]}"; do
 
     for ie in {1..5}; do
     
-        echo "== Running script Stokes2D_ve3_perf, resol=$i (test $ie)"
-        USE_GPU=$USE_GPU DO_VIZ=$DO_VIZ DO_SAVE=$DO_SAVE DO_SAVE_VIZ=$DO_SAVE_VIZ NX=$i NY=$i $julia_ --project -O3 --check-bounds=no Stokes2D_ve3_perf.jl
+        echo "== Running script Stokes2D_ve_perf, resol=$i (test $ie)"
+        USE_GPU=$USE_GPU DO_VIZ=$DO_VIZ DO_SAVE=$DO_SAVE DO_SAVE_VIZ=$DO_SAVE_VIZ NX=$i NY=$i $julia_ --project -O3 --check-bounds=no Stokes2D_ve_perf.jl
     
     done
 

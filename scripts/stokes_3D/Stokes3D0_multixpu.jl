@@ -227,12 +227,12 @@ end
             p4 = heatmap(Xi_g, Zi_g, log10.(abs.(Rz_v[:,y_sl2,:]')), aspect_ratio=1,  xlims=(Xi_g[1],Xi_g[end]), zlims=(Zi_g[1],Zi_g[end]), c=:viridis, title="log10(Rz)")
             p5 = plot(err_evo2,err_evo1, legend=false, xlabel="# iterations", ylabel="log10(error)", linewidth=2, markershape=:circle, markersize=3, labels="max(error)", yaxis=:log10)
             plot(p1, p2, p4, p5)
-            savefig("../../figures/Stokes_3D_$(nx_g()).png")
+            savefig("../../figures/Stokes_3D0_$(nx_g()).png")
         end
     end
     if me==0 && do_save
         !ispath("../../output") && mkdir("../../output")
-        open("../../output/out_Stokes3D.txt","a") do io
+        open("../../output/out_Stokes3D0.txt","a") do io
             println(io, "$(nx_g()) $(ny_g()) $(nz_g()) $(iter)")
         end
     end

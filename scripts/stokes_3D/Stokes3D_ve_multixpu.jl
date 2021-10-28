@@ -269,18 +269,18 @@ end
             p3 = plot(evo_t, evo_τzz, legend=false, xlabel="time", ylabel="max(τzz)", linewidth=0, markershape=:circle, framestyle=:box, markersize=3)
                #plot!(evo_t, 2.0.*εbg.*μs0.*(1.0.-exp.(.-evo_t.*G./μs0)), linewidth=2.0) # analytical solution
             plot(p1, p2, p4, p3)
-            savefig("../../figures/Stokes_3D_ve3_$(nx_g()).png")
+            savefig("../../figures/Stokes_3D_ve_$(nx_g()).png")
         end
     end
     if me==0 && do_save
         !ispath("../../output") && mkdir("../../output")
-        open("../../output/out_Stokes3D_ve3.txt","a") do io
+        open("../../output/out_Stokes3D_ve.txt","a") do io
             println(io, "$(nx_g()) $(ny_g()) $(nz_g()) $(ittot) $(nt)")
         end
     end
     if me==0 && do_save_viz
         !ispath("../../out_visu") && mkdir("../../out_visu")
-        matwrite("../../out_visu/Stokes_3D_ve3.mat", Dict("Pt_3D"=> Pt_v, "Mus_3D"=> Mus_v, "Txz_3D"=> τxz_v, "Vz_3D"=> Vz_v, "dx_3D"=> dx, "dy_3D"=> dy, "dz_3D"=> dz); compress = true)
+        matwrite("../../out_visu/Stokes_3D_ve.mat", Dict("Pt_3D"=> Pt_v, "Mus_3D"=> Mus_v, "Txz_3D"=> τxz_v, "Vz_3D"=> Vz_v, "dx_3D"=> dx, "dy_3D"=> dy, "dz_3D"=> dz); compress = true)
     end
     finalize_global_grid()
     return

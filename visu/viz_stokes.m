@@ -4,7 +4,7 @@ fig1=0;
 fig2=1;
 
 lx = 10; ly = 10; lz = 10;
-data_2D = load('../out_visu/Stokes_2D_ve3.mat');
+data_2D = load('../out_visu/Stokes_2D_ve.mat');
 Pt_2D  = data_2D.Pt_2D;
 Mu_2D  = data_2D.Mus_2D;
 Txy_2D = data_2D.Txy_2D;
@@ -13,7 +13,7 @@ dx = data_2D.dx_2D; xc_2D = dx/2:dx:lx-dx/2;
 dy = data_2D.dy_2D; yc_2D = dy/2:dy:ly-dy/2; yv_2D = 0:dy:ly; yv_2D2 = yv_2D - ly/2;
 Vy_BG = repmat(yv_2D2,size(Vy_2D,1),1);
 
-data_3D = load('../out_visu/Stokes_3D_ve3.mat');
+data_3D = load('../out_visu/Stokes_3D_ve.mat');
 Pt_3D  = data_3D.Pt_3D;
 Mu_3D  = data_3D.Mus_3D;
 Txz_3D = data_3D.Txz_3D;

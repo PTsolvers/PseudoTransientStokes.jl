@@ -16,7 +16,7 @@ RESOL2=511
 
 NP=( 1 2 4 8 )
 
-declare -a RUN=( "Stokes3D_ve3_perf" "Stokes3D_ve3_multixpu_perf" )
+declare -a RUN=( "Stokes3D_ve_perf" "Stokes3D_ve_multixpu_perf" )
 
 USE_GPU=true
 

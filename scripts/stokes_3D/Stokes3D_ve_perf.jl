@@ -13,12 +13,7 @@ using ParallelStencil.FiniteDifferences3D
 else
     @init_parallel_stencil(Threads, Float64, 3)
 end
-using ImplicitGlobalGrid, Plots, Printf, Statistics, LinearAlgebra, MAT
-import MPI
-# Global reductions
-mean_g(A)    = (mean_l = mean(A); MPI.Allreduce(mean_l, MPI.SUM, MPI.COMM_WORLD)/MPI.Comm_size(MPI.COMM_WORLD))
-norm_g(A)    = (sum2_l = sum(A.^2); sqrt(MPI.Allreduce(sum2_l, MPI.SUM, MPI.COMM_WORLD)))
-maximum_g(A) = (max_l  = maximum(A); MPI.Allreduce(max_l,  MPI.MAX, MPI.COMM_WORLD))
+using Plots, Printf, Statistics, LinearAlgebra, MAT
 # CPU functions
 @views av_xza(A) = (A[1:end-1,:,1:end-1] .+ A[1:end-1,:,2:end] .+ A[2:end,:,1:end-1] .+ A[2:end,:,2:end]).*0.25
 @views av_zi(A)  = (A[2:end-1,2:end-1,2:end-2] .+ A[2:end-1,2:end-1,3:end-1]).*0.5
@@ -135,11 +130,8 @@ end
     CFL        = 0.8/sqrt(3)       # CFL number
     ε          = 1e-8              # nonlinear absolute tolerence
     # nx, ny, nz = 127, 127, 127     # numerical grid resolution; should be a mulitple of 32-1 for optimal GPU perf
-    b_width    = (16, 8, 4)         # boundary width for comm/comp overlap
     # Derived numerics
-    me, dims, nprocs = init_global_grid(nx, ny, nz) # MPI initialisation
-    @static if USE_GPU select_device() end    # select one GPU per MPI local rank (if >1 GPU per node)
-    dx, dy, dz = lx/nx_g(), ly/ny_g(), lz/nz_g()      # cell sizes
+    dx, dy, dz = lx/nx, ly/ny, lz/nz      # cell sizes
     max_lxyz   = max(lx,ly,lz)
     Vpdt       = min(dx,dy,dz)*CFL
     _dx, _dy, _dz = 1.0/dx, 1.0/dy, 1.0/dz
@@ -170,119 +162,87 @@ end
     Rad2       =  zeros(nx  ,ny  ,nz  )
     Vx         =  zeros(nx+1,ny  ,nz  )
     Vz         =  zeros(nx  ,ny  ,nz+1)
-    Rad2      .= [(x_g(ix,dx,Rad2) +0.5*dx -0.5*lx)^2 + (y_g(iy,dy,Rad2) +0.5*dy -0.5*ly)^2 + (z_g(iz,dz,Rad2) +0.5*dz -0.5*lz)^2 for ix=1:size(Rad2,1), iy=1:size(Rad2,2), iz=1:size(Rad2,3)]
-    Vx         = Data.Array( -εbg.*[(x_g(ix,dx,Vx) +0.5*dx -0.5*lx) for ix=1:size(Vx,1), iy=1:size(Vx,2), iz=1:size(Vx,3)] )
-    Vz         = Data.Array(  εbg.*[(z_g(iz,dz,Vz) +0.5*dz -0.5*lz) for ix=1:size(Vz,1), iy=1:size(Vz,2), iz=1:size(Vz,3)] )
+    Rad2      .= [(((ix-1)*dx +0.5*dx -0.5*lx)^2 + ((iy-1)*dy +0.5*dy -0.5*ly)^2 + ((iz-1)*dz +0.5*dz -0.5*lz)^2) for ix=1:size(Rad2,1), iy=1:size(Rad2,2), iz=1:size(Rad2,3)]
+    Vx         = Data.Array( -εbg.*[((ix-1)*dx -0.5*lx) for ix=1:size(Vx,1), iy=1:size(Vx,2), iz=1:size(Vx,3)] )
+    Vz         = Data.Array(  εbg.*[((iz-1)*dz -0.5*lz) for ix=1:size(Vz,1), iy=1:size(Vz,2), iz=1:size(Vz,3)] )
     Mus        = μs0*ones(nx,ny,nz)    
     Mus[Rad2.<1.0] .= μsi
     Mus        = Data.Array(Mus)
     Mus2      .= Mus
     for ism=1:10#15
-        @hide_communication b_width begin # communication/computation overlap
-            @parallel smooth!(Mus2, Mus, 1.0)
-            Mus, Mus2 = Mus2, Mus
-            update_halo!(Mus)
-        end
+        @parallel smooth!(Mus2, Mus, 1.0)
+        Mus, Mus2 = Mus2, Mus
     end
     Musτ      .= Mus
-    @hide_communication b_width begin # communication/computation overlap
-        @parallel compute_maxloc!(Musτ, Mus)
-        @parallel (1:size(Musτ,2), 1:size(Musτ,3)) bc_x!(Musτ)
-        @parallel (1:size(Musτ,1), 1:size(Musτ,3)) bc_y!(Musτ)
-        @parallel (1:size(Musτ,1), 1:size(Musτ,2)) bc_z!(Musτ)
-        update_halo!(Musτ)
-    end
+    @parallel compute_maxloc!(Musτ, Mus)
+    @parallel (1:size(Musτ,2), 1:size(Musτ,3)) bc_x!(Musτ)
+    @parallel (1:size(Musτ,1), 1:size(Musτ,3)) bc_y!(Musτ)
+    @parallel (1:size(Musτ,1), 1:size(Musτ,2)) bc_z!(Musτ)
     nx_1, nx_2, ny_1, ny_2, nz_1, nz_2 = nx-1, nx-2, ny-1, ny-2, nz-1, nz-2
-    len_Rx_g   = ((nx-2-1)*dims[1]+2)*((ny-2-2)*dims[2]+2)*((nz-2-2)*dims[3]+2)
-    len_Ry_g   = ((nx-2-2)*dims[1]+2)*((ny-2-1)*dims[2]+2)*((nz-2-2)*dims[3]+2)
-    len_Rz_g   = ((nx-2-2)*dims[1]+2)*((ny-2-2)*dims[2]+2)*((nz-2-1)*dims[3]+2)
-    len_∇V_g   = ((nx-2  )*dims[1]+2)*((ny-2  )*dims[2]+2)*((nz-2  )*dims[3]+2)
     # Preparation of visualisation
     if do_viz || do_save_viz
-        if (me==0) ENV["GKSwstype"]="nul"; if do_viz !ispath("../../figures") && mkdir("../../figures") end; end
-        nx_v, ny_v, nz_v = (nx-2)*dims[1], (ny-2)*dims[2], (nz-2)*dims[3]
-        if (nx_v*ny_v*nz_v*sizeof(Data.Number) > 0.8*Sys.free_memory()) error("Not enough memory for visualization.") end
-        Pt_v   = zeros(nx_v, ny_v, nz_v) # global array for visu
-        Vz_v   = zeros(nx_v, ny_v, nz_v)
-        Rz_v   = zeros(nx_v, ny_v, nz_v)
-        Mus_v  = zeros(nx_v, ny_v, nz_v)
-        τxz_v  = zeros(nx_v, ny_v, nz_v)
-        Pt_inn = zeros(nx-2, ny-2, nz-2) # no halo local array for visu
-        Vz_inn = zeros(nx-2, ny-2, nz-2)
-        Rz_inn = zeros(nx-2, ny-2, nz-2)
-        Mus_inn= zeros(nx-2, ny-2, nz-2)
-        τxz_inn= zeros(nx-2, ny-2, nz-2)
-        y_sl2, y_sl = Int(ceil((ny_g()-2)/2)), Int(ceil(ny_g()/2))
-        Xi_g, Zi_g  = dx+dx/2:dx:(lx-dx-dx/2), dz+dz/2:dz:(lz-dz-dz/2) # inner points only
+        ENV["GKSwstype"]="nul"; if do_viz !ispath("../../figures") && mkdir("../../figures") end
+        y_sl2, y_sl = Int(ceil((ny-2)/2)), Int(ceil(ny/2))
+        xc, zc  = dx/2:dx:(lx-dx/2), dz/2:dz:(lz-dz/2)
+        xv, zv  = 0:dx:lx, 0:dz:lz
     end
     # Time loop
     @parallel compute_iter_params!(dt_Rho, Gdt, Musτ, Vpdt, G, dt, Re, r, max_lxyz)
-    t=0.0; ittot=0; evo_t=[]; evo_τzz=[]
+    t=0.0; ittot=0; evo_t=[]; evo_τzz=[]; t_tic = 0.0
     for it = 1:nt
         err=2*ε; iter=0; err_evo1=[]; err_evo2=[]
         @parallel assign_τ!(τxx, τyy, τzz, τxy, τxz, τyz, τxx_o, τyy_o, τzz_o, τxy_o, τxz_o, τyz_o)
         # Pseudo-transient iteration
         while err > ε && iter <= iterMax
-            if (it==1 && iter==11)  tic()  end
+            if (it==1 && iter==11) t_tic = Base.time() end
             @parallel compute_Pt_τ!(Pt, τxx, τyy, τzz, τxy, τxz, τyz, τxx_o, τyy_o, τzz_o, τxy_o, τxz_o, τyz_o, Vx, Vy, Vz, Mus, Gdt, r, G, dt, _dx, _dy, _dz)
-            @hide_communication b_width begin # communication/computation overlap
-                @parallel compute_V!(Vx, Vy, Vz, Pt, τxx, τyy, τzz, τxy, τxz, τyz, dt_Rho, _dx, _dy, _dz, nx_1, nx_2, ny_1, ny_2, nz_1, nz_2)
-                @parallel (1:size(Vy,2), 1:size(Vy,3)) bc_x!(Vy)
-                @parallel (1:size(Vz,2), 1:size(Vz,3)) bc_x!(Vz)
-                @parallel (1:size(Vx,1), 1:size(Vx,3)) bc_y!(Vx)
-                @parallel (1:size(Vz,1), 1:size(Vz,3)) bc_y!(Vz)
-                @parallel (1:size(Vx,1), 1:size(Vx,2)) bc_z!(Vx)
-                @parallel (1:size(Vy,1), 1:size(Vy,2)) bc_z!(Vy)
-                update_halo!(Vx, Vy, Vz)
-            end
+            @parallel compute_V!(Vx, Vy, Vz, Pt, τxx, τyy, τzz, τxy, τxz, τyz, dt_Rho, _dx, _dy, _dz, nx_1, nx_2, ny_1, ny_2, nz_1, nz_2)
+            @parallel (1:size(Vy,2), 1:size(Vy,3)) bc_x!(Vy)
+            @parallel (1:size(Vz,2), 1:size(Vz,3)) bc_x!(Vz)
+            @parallel (1:size(Vx,1), 1:size(Vx,3)) bc_y!(Vx)
+            @parallel (1:size(Vz,1), 1:size(Vz,3)) bc_y!(Vz)
+            @parallel (1:size(Vx,1), 1:size(Vx,2)) bc_z!(Vx)
+            @parallel (1:size(Vy,1), 1:size(Vy,2)) bc_z!(Vy)
             iter += 1
             if iter % nout == 0
                 @parallel compute_Res!(∇V, Rx, Ry, Rz, Vx, Vy, Vz, Pt, τxx, τyy, τzz, τxy, τxz, τyz, _dx, _dy, _dz)
-                norm_Rx = norm_g(Rx)/len_Rx_g; norm_Ry = norm_g(Ry)/len_Ry_g; norm_Rz = norm_g(Rz)/len_Rz_g; norm_∇V = norm_g(∇V)/len_∇V_g
+                norm_Rx = norm(Rx)/length(Rx); norm_Ry = norm(Ry)/length(Ry); norm_Rz = norm(Rz)/length(Rz); norm_∇V = norm(∇V)/length(∇V)
                 err = maximum([norm_Rx, norm_Ry, norm_Rz, norm_∇V])
                 if isnan(err) error("NaN") end
                 push!(err_evo1,maximum([norm_Rx, norm_Ry, norm_Rz, norm_∇V])); push!(err_evo2,iter)
-                if (me==0) @printf("Step = %d, iter = %d, err = %1.3e [norm_Rx=%1.3e, norm_Ry=%1.3e, norm_Rz=%1.3e, norm_∇V=%1.3e] \n", it, iter, err, norm_Rx, norm_Ry, norm_Rz, norm_∇V) end
+                @printf("Step = %d, iter = %d, err = %1.3e [norm_Rx=%1.3e, norm_Ry=%1.3e, norm_Rz=%1.3e, norm_∇V=%1.3e] \n", it, iter, err, norm_Rx, norm_Ry, norm_Rz, norm_∇V)
             end
         end
         ittot += iter; t += dt
         # push!(evo_t, t); push!(evo_τzz, maximum(τzz))
     end
     # Performance
-    wtime    = toc()
+    wtime    = Base.time() - t_tic
     A_eff    = (10*2 + 6*1 + 3)/1e9*nx*ny*nz*sizeof(Data.Number) # Effective main memory access per iteration [GB] (Lower bound of required memory access: Te has to be read and written: 2 whole-array memaccess; Ci has to be read: : 1 whole-array memaccess)
     wtime_it = wtime/(ittot-10)                           # Execution time per iteration [s]
     T_eff    = A_eff/wtime_it                             # Effective memory throughput [GB/s]
-    if (me==0) @printf("Total iters = %d (%d steps), time = %1.3e sec (@ T_eff = %1.2f GB/s) \n", ittot, nt, wtime, round(T_eff, sigdigits=3)) end
+    @printf("Total iters = %d (%d steps), time = %1.3e sec (@ T_eff = %1.2f GB/s) \n", ittot, nt, wtime, round(T_eff, sigdigits=3))
     # Visualisation
-    if do_viz || do_save_viz
-        Pt_inn .= inn(Pt);   gather!(Pt_inn, Pt_v)
-        Vz_inn .= av_zi(Vz); gather!(Vz_inn, Vz_v)
-        Rz_inn .= av_za(Rz); gather!(Rz_inn, Rz_v)
-        Mus_inn.= inn(Mus);  gather!(Mus_inn, Mus_v)
-        τxz_inn.= av_xza(τxz); gather!(τxz_inn, τxz_v)
-        if me==0 && do_viz
-            p1 = heatmap(Xi_g, Zi_g, Pt_v[:,y_sl,:]', aspect_ratio=1, xlims=(Xi_g[1],Xi_g[end]), zlims=(Zi_g[1],Zi_g[end]), c=:viridis, title="Pressure")
-            p2 = heatmap(Xi_g, Zi_g, Vz_v[:,y_sl,:]', aspect_ratio=1, xlims=(Xi_g[1],Xi_g[end]), zlims=(Zi_g[1],Zi_g[end]), c=:viridis, title="Vz")
-            p4 = heatmap(Xi_g, Zi_g, log10.(abs.(Rz_v[:,y_sl2,:]')), aspect_ratio=1,  xlims=(Xi_g[1],Xi_g[end]), zlims=(Zi_g[1],Zi_g[end]), c=:viridis, title="log10(Rz)")
-            #p5 = plot(err_evo2,err_evo1, legend=false, xlabel="# iterations", ylabel="log10(error)", linewidth=2, markershape=:circle, markersize=3, labels="max(error)", yaxis=:log10)
-            p3 = plot(evo_t, evo_τzz, legend=false, xlabel="time", ylabel="max(τzz)", linewidth=0, markershape=:circle, framestyle=:box, markersize=3)
-               #plot!(evo_t, 2.0.*εbg.*μs0.*(1.0.-exp.(.-evo_t.*G./μs0)), linewidth=2.0) # analytical solution
-            plot(p1, p2, p4, p3)
-            savefig("../../figures/Stokes_3D_ve3_perf_xpu_$(nx_g()).png")
-        end
+    if do_viz
+        p1 = heatmap(xc, zc, Array(Pt)[:,y_sl,:]', aspect_ratio=1, xlims=(xc[1],xc[end]), zlims=(zc[1],zc[end]), c=:viridis, title="Pressure")
+        p2 = heatmap(xc, zv, Array(Vz)[:,y_sl,:]', aspect_ratio=1, xlims=(xc[1],xc[end]), zlims=(zc[1],zc[end]), c=:viridis, title="Vz")
+        p4 = heatmap(xc[2:end-1], xv[2:end-1], log10.(abs.(Array(Rz)[:,y_sl2,:]')), aspect_ratio=1,  xlims=(xc[2],xc[end-1]), zlims=(zc[2],zc[end-1]), c=:viridis, title="log10(Rz)")
+        #p5 = plot(err_evo2,err_evo1, legend=false, xlabel="# iterations", ylabel="log10(error)", linewidth=2, markershape=:circle, markersize=3, labels="max(error)", yaxis=:log10)
+        p3 = plot(evo_t, evo_τzz, legend=false, xlabel="time", ylabel="max(τzz)", linewidth=0, markershape=:circle, framestyle=:box, markersize=3)
+            #plot!(evo_t, 2.0.*εbg.*μs0.*(1.0.-exp.(.-evo_t.*G./μs0)), linewidth=2.0) # analytical solution
+        plot(p1, p2, p4, p3)
+        savefig("../../figures/Stokes_3D_ve_perf_$(nx).png")
     end
-    if me==0 && do_save
+    if do_save
         !ispath("../../output") && mkdir("../../output")
-        open("../../output/out_Stokes3D_ve3_xpu_perf.txt","a") do io
-            println(io, "$(nprocs) $(nx_g()) $(ny_g()) $(nz_g()) $(ittot) $(wtime) $(A_eff) $(wtime_it) $(T_eff)")
+        open("../../output/out_Stokes3D_ve_perf.txt","a") do io
+            println(io, "1 $(nx) $(ny) $(nz) $(ittot) $(wtime) $(A_eff) $(wtime_it) $(T_eff)")
         end
     end
-    if me==0 && do_save_viz
+    if do_save_viz
         !ispath("../../out_visu") && mkdir("../../out_visu")
-        matwrite("../../out_visu/Stokes_3D_ve3_perf_xpu.mat", Dict("Pt_3D"=> Pt_v, "Mus_3D"=> Mus_v, "Txz_3D"=> τxz_v, "Vz_3D"=> Vz_v, "dx_3D"=> dx, "dy_3D"=> dy, "dz_3D"=> dz); compress = true)
+        matwrite("../../out_visu/Stokes_3D_ve_perf.mat", Dict("Pt_3D"=> Array(Pt), "Mus_3D"=> Array(Mus), "Txz_3D"=> Array(τxz), "Vz_3D"=> Array(Vz), "dx_3D"=> dx, "dy_3D"=> dy, "dz_3D"=> dz); compress = true)
     end
-    finalize_global_grid()
     return
 end
 
