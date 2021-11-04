@@ -19,7 +19,7 @@ The aim of [the PTsolvers project](https://ptsolvers.github.io/) is to examplify
 ## Scripts
 
 ### Optimal iteration parameters
-The folder [**dispersion_analysis**](#dispersion-analysis) contains the analytical derivations for the values of iteration parameters. We provide these derivations for 1D viscous Stokes problem. Only the case of `μ=const` is considered.
+The folder [**dispersion_analysis**](/dispersion_analysis) contains the analytical derivations for the values of iteration parameters. We provide these derivations for 1D viscous Stokes problem. Only the case of `μ=const` is considered.
 
 The main output of the script is the theoretically predicted value for the non-dimensional parameters `Re` and `r`, which are used in the solvers. The figure showing the dependency of the residual decay rate on `Re` and `r` is also displayed:
 
