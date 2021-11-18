@@ -29,7 +29,7 @@ semilogx(Stokes_2D(1,2:end), Stokes_2D(3,2:end)./Stokes_2D(1,2:end)./Stokes_2D(4
          Stokes_3D(1,1:end), Stokes_3D(4,1:end)./Stokes_3D(1,1:end)./Stokes_3D(5,1:end),'-o', ...
          'linewidth',3, 'MarkerFaceColor','k'), axis square, set(gca, 'fontsize',FS, 'linewidth',1.4)
 ylabel({' ';'\bf{iter_{tot}/nt/nx}'}, 'fontsize',FS)
-ylim([3 15])
+ylim([15 20]) % ylim([3 15])
 lg=legend('2D', '3D'); set(lg,'box','off')
 set(gca, 'XTick',Stokes_2D(1,2:end))
 xtickangle(45)

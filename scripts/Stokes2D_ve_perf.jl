@@ -151,7 +151,12 @@ end
             iter += 1
             if iter % nout == 0
                 @parallel compute_Res!(∇V, Rx, Ry, Pt, Vx, Vy, τxx, τyy, τxy, _dx, _dy)
-                norm_Rx = norm(Rx)/length(Rx); norm_Ry = norm(Ry)/length(Ry); norm_∇V = norm(∇V)/length(∇V)
+                Vmin, Vmax = minimum(Vx), maximum(Vx)
+                Pmin, Pmax = minimum(Pt), maximum(Pt)
+                norm_Rx    = norm(Rx)/(Pmax-Pmin)*lx/sqrt(length(Rx))
+                norm_Ry    = norm(Ry)/(Pmax-Pmin)*lx/sqrt(length(Ry))
+                norm_∇V    = norm(∇V)/(Vmax-Vmin)*lx/sqrt(length(∇V))
+                # norm_Rx = norm(Rx)/length(Rx); norm_Ry = norm(Ry)/length(Ry); norm_∇V = norm(∇V)/length(∇V)
                 err = maximum([norm_Rx, norm_Ry, norm_∇V])
                 if isnan(err) error("NaN") end
                 push!(err_evo1, maximum([norm_Rx, norm_Ry, norm_∇V])); push!(err_evo2,iter)

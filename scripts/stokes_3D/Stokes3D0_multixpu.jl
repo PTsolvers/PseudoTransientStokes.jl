@@ -18,6 +18,7 @@ import MPI
 mean_g(A)    = (mean_l = mean(A); MPI.Allreduce(mean_l, MPI.SUM, MPI.COMM_WORLD)/MPI.Comm_size(MPI.COMM_WORLD))
 norm_g(A)    = (sum2_l = sum(A.^2); sqrt(MPI.Allreduce(sum2_l, MPI.SUM, MPI.COMM_WORLD)))
 maximum_g(A) = (max_l  = maximum(A); MPI.Allreduce(max_l,  MPI.MAX, MPI.COMM_WORLD))
+minimum_g(A) = (min_l  = minimum(A); MPI.Allreduce(min_l,  MPI.MIN, MPI.COMM_WORLD))
 # CPU functions
 @views av_zi(A) = (A[2:end-1,2:end-1,2:end-2] .+ A[2:end-1,2:end-1,3:end-1]).*0.5
 @views av_za(A) = (A[:,:,1:end-1] .+ A[:,:,2:end]).*0.5
@@ -203,7 +204,13 @@ end
         end
         iter += 1
         if iter % nout == 0
-            norm_Rx = norm_g(Rx)/len_Rx_g; norm_Ry = norm_g(Ry)/len_Ry_g; norm_Rz = norm_g(Rz)/len_Rz_g; norm_∇V = norm_g(∇V)/len_∇V_g
+            Vmin, Vmax = minimum_g(Vx), maximum_g(Vx)
+            Pmin, Pmax = minimum_g(Pt), maximum_g(Pt)
+            norm_Rx    = norm_g(Rx)/(Pmax-Pmin)*lx/sqrt(len_Rx_g)
+            norm_Ry    = norm_g(Ry)/(Pmax-Pmin)*lx/sqrt(len_Ry_g)
+            norm_Rz    = norm_g(Rz)/(Pmax-Pmin)*lx/sqrt(len_Rz_g)
+            norm_∇V    = norm_g(∇V)/(Vmax-Vmin)*lx/sqrt(len_∇V_g)
+            # norm_Rx = norm_g(Rx)/len_Rx_g; norm_Ry = norm_g(Ry)/len_Ry_g; norm_Rz = norm_g(Rz)/len_Rz_g; norm_∇V = norm_g(∇V)/len_∇V_g
             err = maximum([norm_Rx, norm_Ry, norm_Rz, norm_∇V])
             if isnan(err) error("NaN") end
             push!(err_evo1,maximum([norm_Rx, norm_Ry, norm_Rz, norm_∇V])); push!(err_evo2,iter)
