@@ -1,10 +1,11 @@
-const USE_GPU = haskey(ENV, "USE_GPU") ? parse(Bool, ENV["USE_GPU"]) : true
-const do_viz  = haskey(ENV, "DO_VIZ")  ? parse(Bool, ENV["DO_VIZ"])  : false
-const do_save = haskey(ENV, "DO_SAVE") ? parse(Bool, ENV["DO_SAVE"]) : false
+const use_return  = haskey(ENV, "USE_RETURN" ) ? parse(Bool, ENV["USE_RETURN"] ) : false
+const USE_GPU     = haskey(ENV, "USE_GPU"    ) ? parse(Bool, ENV["USE_GPU"]    ) : false
+const do_viz      = haskey(ENV, "DO_VIZ"     ) ? parse(Bool, ENV["DO_VIZ"]     ) : false
+const do_save     = haskey(ENV, "DO_SAVE"    ) ? parse(Bool, ENV["DO_SAVE"]    ) : false
 const do_save_viz = haskey(ENV, "DO_SAVE_VIZ") ? parse(Bool, ENV["DO_SAVE_VIZ"]) : false
-const nx = haskey(ENV, "NX") ? parse(Int, ENV["NX"]) : 64 - 1
-const ny = haskey(ENV, "NY") ? parse(Int, ENV["NY"]) : 64 - 1
-const nz = haskey(ENV, "NZ") ? parse(Int, ENV["NZ"]) : 64 - 1
+const nx          = haskey(ENV, "NX"         ) ? parse(Int , ENV["NX"]         ) : 64 - 1
+const ny          = haskey(ENV, "NY"         ) ? parse(Int , ENV["NY"]         ) : 64 - 1
+const nz          = haskey(ENV, "NZ"         ) ? parse(Int , ENV["NZ"]         ) : 64 - 1
 ###
 using ParallelStencil
 using ParallelStencil.FiniteDifferences3D
@@ -118,7 +119,7 @@ end
     return
 end
 
-@views function Stokes3D()
+@views function Stokes3D_()
     # Physics
     lx, ly, lz = 10.0, 10.0, 10.0  # domain extends
     ξ          = 1.0               # Maxwell relaxation time
@@ -144,6 +145,7 @@ end
     max_lxyz   = max(lx,ly,lz)
     Vpdτ       = min(dx,dy,dz)*CFL
     _dx, _dy, _dz = 1.0/dx, 1.0/dy, 1.0/dz
+    xc, yc, zc = LinRange(dx/2, lx-dx/2, nx), LinRange(dy/2, ly-dy/2, ny), LinRange(dz/2, lz-dz/2, nz)
     # Array allocations
     Pt         = @zeros(nx  ,ny  ,nz  )
     dτ_Rho     = @zeros(nx  ,ny  ,nz  )
@@ -290,7 +292,11 @@ end
         matwrite("../../out_visu/Stokes_3D_ve_perf_xpu.mat", Dict("Pt_3D"=> Pt_v, "Mus_3D"=> Mus_v, "Txz_3D"=> τxz_v, "Vz_3D"=> Vz_v, "dx_3D"=> dx, "dy_3D"=> dy, "dz_3D"=> dz); compress = true)
     end
     finalize_global_grid()
-    return
+    return xc, yc, zc, Pt
 end
 
-Stokes3D()
+if use_return
+    xc, yc, zc, P = Stokes3D_();
+else
+    Stokes3D = begin Stokes3D_(); return; end
+end

@@ -1,5 +1,5 @@
 module PseudoTransientStokes
 
-println("Hello, welcome to PseudoTransientStokes.jl")
+greet() = print("Hello World!")
 
-end
+end # module

@@ -1,9 +1,10 @@
-const USE_GPU = haskey(ENV, "USE_GPU") ? parse(Bool, ENV["USE_GPU"]) : true
-const do_viz  = haskey(ENV, "DO_VIZ")  ? parse(Bool, ENV["DO_VIZ"])  : false
-const do_save = haskey(ENV, "DO_SAVE") ? parse(Bool, ENV["DO_SAVE"]) : false
+const use_return  = haskey(ENV, "USE_RETURN" ) ? parse(Bool, ENV["USE_RETURN"] ) : false
+const USE_GPU     = haskey(ENV, "USE_GPU"    ) ? parse(Bool, ENV["USE_GPU"]    ) : false
+const do_viz      = haskey(ENV, "DO_VIZ"     ) ? parse(Bool, ENV["DO_VIZ"]     ) : false
+const do_save     = haskey(ENV, "DO_SAVE"    ) ? parse(Bool, ENV["DO_SAVE"]    ) : false
 const do_save_viz = haskey(ENV, "DO_SAVE_VIZ") ? parse(Bool, ENV["DO_SAVE_VIZ"]) : false
-const nx = haskey(ENV, "NX") ? parse(Int, ENV["NX"]) : 1*256 - 1
-const ny = haskey(ENV, "NY") ? parse(Int, ENV["NY"]) : 1*256 - 1
+const nx          = haskey(ENV, "NX"         ) ? parse(Int , ENV["NX"]         ) : 256 - 1
+const ny          = haskey(ENV, "NY"         ) ? parse(Int , ENV["NY"]         ) : 256 - 1
 ###
 using ParallelStencil
 using ParallelStencil.FiniteDifferences2D
@@ -76,7 +77,7 @@ end
     return
 end
 
-@views function Stokes2D()
+@views function Stokes2D_()
     # Physics
     lx, ly    = 10.0, 10.0  # domain extends
     ξ         = 1.0         # Maxwell relaxation time
@@ -99,6 +100,7 @@ end
     max_lxy   = max(lx,ly)
     Vpdτ      = min(dx,dy)*CFL
     _dx, _dy  = 1.0/dx, 1.0/dy
+    xc, yc, yv = LinRange(dx/2, lx - dx/2, nx), LinRange(dy/2, ly - dy/2, ny), LinRange(0, ly, ny+1)
     # Array allocations
     Pt        = @zeros(nx  ,ny  )
     dτ_Rho    = @zeros(nx  ,ny  )
@@ -174,9 +176,8 @@ end
     @printf("Total iters = %d (%d steps), time = %1.3e sec (@ T_eff = %1.2f GB/s) \n", ittot, nt, t_toc, round(T_eff, sigdigits=3))
     # Visualisation
     if do_viz
-        X, Y, Yv  = dx/2:dx:lx-dx/2, dy/2:dy:ly-dy/2, 0:dy:ly
-        p1 = heatmap(X,  Y, Array(τyy)', aspect_ratio=1, xlims=(X[1],X[end]), ylims=(Y[1],Y[end]), c=:viridis, title="τyy")
-        p2 = heatmap(X, Yv, Array(Vy)', aspect_ratio=1, xlims=(X[1],X[end]), ylims=(Yv[1],Yv[end]), c=:viridis, title="Vy")
+        p1 = heatmap(xc, yc, Array(τyy)', aspect_ratio=1, xlims=extrema(xc), ylims=extrema(yc), c=:viridis, title="τyy")
+        p2 = heatmap(xc, yv, Array(Vy)', aspect_ratio=1, xlims=extrema(xc), ylims=extrema(yv), c=:viridis, title="Vy")
         # p4 = heatmap(X[2:end-1], Yv[2:end-1], log10.(abs.(Array(Ry)')), aspect_ratio=1, xlims=(X[2],X[end-1]), ylims=(Yv[2],Yv[end-1]), c=:viridis, title="log10(Ry)")
         # p5 = scatter(err_evo2,err_evo1, legend=false, xlabel="# iterations", ylabel="log10(error)", linewidth=2, markershape=:circle, markersize=3, framestyle=:box, labels="max(error)", yaxis=:log10)
         p3 = plot(evo_t, evo_τyy , legend=false, xlabel="time", ylabel="max(τyy)", linewidth=0, markershape=:circle, framestyle=:box, markersize=3)
@@ -193,7 +194,11 @@ end
         !ispath("../out_visu") && mkdir("../out_visu")
         matwrite("../out_visu/Stokes_2D_ve_perf.mat", Dict("Pt_2D"=> Array(Pt), "Mus_2D"=> Array(Mus), "Txy_2D"=> Array(τxy), "Vy_2D"=> Array(Vy), "dx_2D"=> dx, "dy_2D"=> dy); compress = true)
     end
-    return
+    return xc, yc, Pt
 end
 
-Stokes2D()
+if use_return
+    xc, yc, P = Stokes2D_();
+else
+    Stokes2D = begin Stokes2D_(); return; end
+end
