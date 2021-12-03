@@ -2,25 +2,78 @@
 
 [![Build Status](https://github.com/PTsolvers/PseudoTransientStokes.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/PTsolvers/PseudoTransientStokes.jl/actions/workflows/CI.yml?query=branch%3Amain)
 
-Parallel (multi-) XPU iterative 2D and 3D incompressible Stokes flow solvers with viscous and Maxwell visco-elastic shear rheology. This software is part of the [the PTsolvers project](https://ptsolvers.github.io/).
+Parallel (multi-) XPU iterative 2D and 3D incompressible Stokes flow solvers with viscous and Maxwell visco-elastic shear rheology. This software is part of the [the **PTsolvers project**](https://ptsolvers.github.io/).
 
-The aim of [the PTsolvers project](https://ptsolvers.github.io/) is to examplify, test and asses the performance of the pseudo-transient method, implementing second-order convergence acceleration building upon the second order Richardson method \[[Frankel, 1950](https://doi.org/10.2307/2002770)\].
+The aim of this project is to provide iterative solvers **assessing the scalability, performance, and robustness of the accelerated pseudo-transient method** with application to Stokes flow and mechancial processes. The solution strategy characterises as semi-iterative, implementing the second-order convergence acceleration as introduced by, e.g., \[[Frankel, 1950](https://doi.org/10.2307/2002770)\].
 
-
-> 💡 Link to the [Overleaf draft](https://www.overleaf.com/project/5ff83a57858b372f63143b8e)
+This repository relates to the original research article draft submitted to the _**Journal XXX**_:
+```tex
+@article{raess2022,
+    title = {{ }},
+    journal = {Journal XXX}
+}
+```
 
 ## Content
 * [Stokes flow](#stokes-flow)
 * [Scripts](#scripts)
+* [Optimal iteration parameters](#optimal-iteration-parameters)
 * [Additional infos](#additional-infos)
-
+* [Questions, comments and discussions](#questions-comments-and-discussions)
 
 ## Stokes flow
+In this study we resolve viscous and visco-elastic Stokes flow in 2D and 3D, using the following equation:
+```julia
+0 =  ∇ ⋅ V
+0 =  ∇ ⋅ μ ∇ V
+```
+where ...
 
+We use the following initial condition in 1D, 2D, 3D, respectively:
+ 
+<img src="visu/fig_stokes_ini.png" alt="Initial conditions for the transient diffusion problem" width="800">
 
 ## Scripts
+The [**scripts**](/scripts) folder contains the various Julia routines to solve the Stokes flow in 2D (`Stokes2D_*.jl`) and 3D (`Stokes3D_*.jl`). The 3D scripts are grouped in a separate [stokes_3D](/scripts/stokes_3D) including shell scripts to automatise multi-XPU execution. All Julia routines depend on:
+- [ParallelStencil.jl](https://github.com/omlins/ParallelStencil.jl) to allow for backend-agnostic parallelisation on multi-threaded CPUs and Nvidia GPUs (AMD support being _wip_)
+- [Plots.jl](https://github.com/JuliaPlots) for basic visualisation
+- [MAT.jl](https://github.com/JuliaIO/MAT.jl) for file I/O (disk save for publication-ready figures post-processing using Matlab [visualisation scripts](/visu))
 
-### Optimal iteration parameters
+All 3D routines, with exception of one, rely additionally on:
+- [ImplicitGlobalGrid.jl](https://github.com/eth-cscs/ImplicitGlobalGrid.jl) to implement global grid domain decomposition, relying on 
+- [MPI.jl](https://github.com/JuliaParallel/MPI.jl) as communication library for distributed memory, point-to-point communication.
+
+### Running the scripts
+To get started, clone or download this repository, launch Julia in project mode `julia --project` and `instantiate` or `resolve` the dependencies from within the REPL in package mode `julia> ]`.
+
+The 2D scripts can be launched either from with the REPL:
+```julia-repl
+julia> include("Stokes2D_<script_name>.jl")
+```
+or executed from the shell as:
+```shell
+julia --project --check-bounds=no -O3 Stokes2D_<script_name>.jl
+```
+Note that for optimal performance, scripts should be launched from the shell making sure bound-checking to be deactivated.
+
+The 3D scripts can be launched in distributed configuration using, e.g., MPI. This requires either to use the Julia MPI launcher `mpiexecjl` or to rely on system provided MPI ([more here](https://juliaparallel.github.io/MPI.jl/latest/configuration/)).
+
+_:bulb: **Note:** refer to the documentation of your supercomputing centre for instructions to run Julia at scale. Instructions for running on the Piz Daint GPU supercomputer at the [Swiss National Supercomputing Centre](https://www.cscs.ch/computers/piz-daint/) can be found [here](https://user.cscs.ch/tools/interactive/julia/)._
+
+All scripts parse environment variables defining important simulation parameters, defaulting to heuristics, namely
+```julia
+USE_RETURN=false, USE_GPU=false, DO_VIZ=true, DO_SAVE=false, DO_SAVE_VIZ=false
+```
+and
+```julia
+NX, NY, NZ
+```
+defaulting to `255` in 2D and `63` in 3D. Running, e.g., a script from the shell using the GPU backend can be achieved as following:
+```shell
+USE_GPU=true julia --project --check-bounds=no -O3 Stokes2D_<script_name>.jl
+```
+
+## Optimal iteration parameters
 The folder [**dispersion_analysis**](/dispersion_analysis) contains the analytical derivations for the values of iteration parameters. We provide these derivations for 1D viscous Stokes problem. Only the case of `μ=const` is considered.
 
 The main output of the script is the theoretically predicted value for the non-dimensional parameters `Re` and `r`, which are used in the solvers. The figure showing the dependency of the residual decay rate on `Re` and `r` is also displayed:
@@ -47,5 +100,9 @@ The final step is to launch the Jupyter server:
 ```
 This command starts a server and opens the browser window with file manager.
 
-
 ## Additional infos
+The repository implements a reference tests suite, using [ReferenceTests.jl](https://github.com/JuliaTesting/ReferenceTests.jl), to verify the correctness of the outputed results with resepct to a reference solution.
+
+## Questions, comments and discussions
+To discuss technical issues, please post on Julia Discourse in the [Julia at Scale topic](https://discourse.julialang.org/c/domain/parallel/) or in the `#gpu` or `#distributed` channels on the [Julia Slack](https://julialang.slack.com/) (to join, visit https://julialang.org/slack/).
+To discuss numerical/domain-science issues, please post on Julia Discourse in the [Numerics topic](https://discourse.julialang.org/c/domain/numerics/) or the [Modelling & Simulations topic](https://discourse.julialang.org/c/domain/models) or whichever other topic fits best your issue.
