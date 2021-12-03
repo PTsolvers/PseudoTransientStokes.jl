@@ -29,7 +29,7 @@ In this study we resolve viscous and visco-elastic Stokes flow in 2D and 3D, usi
 ```
 where ...
 
-We use the following initial condition in 1D, 2D, 3D, respectively:
+We use the following initial condition in 2D and 3D, respectively:
  
 <img src="visu/fig_stokes_ini.png" alt="Initial conditions for the transient diffusion problem" width="800">
 
