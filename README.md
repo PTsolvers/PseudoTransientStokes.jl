@@ -2,11 +2,11 @@
 
 [![Build Status](https://github.com/PTsolvers/PseudoTransientStokes.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/PTsolvers/PseudoTransientStokes.jl/actions/workflows/CI.yml?query=branch%3Amain)
 
-Parallel (multi-) XPU iterative 2D and 3D incompressible Stokes flow solvers with viscous and Maxwell visco-elastic shear rheology. This software is part of the [the **PTsolvers project**](https://ptsolvers.github.io/).
+Parallel (multi-) XPU iterative 2D and 3D incompressible Stokes flow solvers with viscous and Maxwell visco-elastic shear rheology. This software is part of the [**PTsolvers project**](https://ptsolvers.github.io/).
 
 The aim of this project is to provide iterative solvers **assessing the scalability, performance, and robustness of the accelerated pseudo-transient method** with application to Stokes flow and mechancial processes. The solution strategy characterises as semi-iterative, implementing the second-order convergence acceleration as introduced by, e.g., \[[Frankel, 1950](https://doi.org/10.2307/2002770)\].
 
-This repository relates to the original research article draft submitted to the _**Journal XXX**_:
+This repository, together with [PseudoTransientDiffusion.jl](https://github.com/PTsolvers/PseudoTransientDiffusion.jl/), relates to the original research article draft submitted to the _**Journal XXX**_:
 ```tex
 @article{raess2022,
     title = {{ }},
@@ -24,10 +24,10 @@ This repository relates to the original research article draft submitted to the 
 ## Stokes flow
 In this study we resolve viscous and visco-elastic Stokes flow in 2D and 3D, using the following equation:
 ```julia
-0 =  ∇ ⋅ V
-0 =  ∇ ⋅ μ ∇ V
+0 =  ∇ ⋅ v
+0 = (∇ ⋅ μ∇v) - ∇p + f
 ```
-where ...
+where `v` is the velocity, `µ` the viscosity, `p` the pressure and `f` the external forces.
 
 We use the following initial condition in 2D and 3D, respectively:
  
