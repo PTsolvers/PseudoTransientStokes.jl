@@ -31,7 +31,7 @@ where `v` is the velocity, `µ` the viscosity, `p` the pressure and `f` the exte
 
 We use the following initial condition in 2D and 3D, respectively:
  
-<img src="visu/fig_stokes_ini.png" alt="Initial conditions for the transient diffusion problem" width="800">
+<img src="docs/fig_ini_stokes.png" alt="Initial conditions for the transient diffusion problem" width="800">
 
 ## Scripts
 The [**scripts**](/scripts) folder contains the various Julia routines to solve the Stokes flow in 2D (`Stokes2D_*.jl`) and 3D (`Stokes3D_*.jl`). The 3D scripts are grouped in a separate [stokes_3D](/scripts/stokes_3D) including shell scripts to automatise multi-XPU execution. All Julia routines depend on:
