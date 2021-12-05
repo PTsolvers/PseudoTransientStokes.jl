@@ -1,6 +1,6 @@
 clear
 
-fig1=0;
+fig1=1;
 fig2=1;
 
 lx = 10; ly = 10; lz = 10;
@@ -34,7 +34,7 @@ set(gca,'TickLength',[0,0])
 set(gca,'fontname','Courier')
 ylabel({'\bf{ly}';' ';' '}, 'fontsize',FS)
 xlabel({' ';' ';'\bf{lx}'}, 'fontsize',FS)
-text(-5,13,'a)','fontsize',FS+2,'fontname','Courier')
+text(-5,13,'(a)','fontsize',FS+2,'fontname','Courier')
 
 %%3D
 sp2 = subplot(122);
@@ -87,7 +87,7 @@ posCB = get(cb,'position');
 cb.Position = [posCB(1)*1.06 posCB(2)*2.5 posCB(3)*1.1 posCB(4)*0.4];
 % set(cb,'fontsize',FS)
 set(gca,'fontsize',FS,'fontname','Courier')
-text(390,0,365,'b)','fontsize',FS+2,'fontname','Courier')
+text(390,0,365,'(b)','fontsize',FS+2,'fontname','Courier')
 text(-400,0,80,'\bf{log_{10}\mu_{shear}}','fontsize',FS-2,'fontname','Courier')
 
 box on
@@ -119,7 +119,7 @@ set(gca,'TickLength',[0,0])
 set(gca,'fontname','Courier')
 ylabel({'\bf{∆V_{vertical}}',' ','ly'}, 'fontsize',FS)
 % title({'Stokes 2D',' '})
-text(0.4,9.3,'a)','fontsize',FS+2,'fontname','Courier','color','w')
+text(0.4,9.3,'(a)','fontsize',FS+2,'fontname','Courier','color','w')
 
 sp2 = subplot(323); imagesc(xc_2D, yc_2D, Pt_2D'), axis xy equal tight, set(gca, 'fontsize',FS, 'linewidth',1.3)
 colorbar
@@ -128,7 +128,7 @@ set(gca, 'YTick', [0.1 9.9], 'YTicklabel', [0 10], 'fontsize',FS)
 set(gca,'fontname','Courier')
 set(gca,'TickLength',[0,0])
 ylabel({'\bf{Pressure}',' ','ly'}, 'fontsize',FS)
-text(0.4,9.3,'c)','fontsize',FS+2,'fontname','Courier','color','w')
+text(0.4,9.3,'(c)','fontsize',FS+2,'fontname','Courier','color','w')
 
 sp3 = subplot(325); imagesc(xc_2D(2:end), yc_2D(2:end), Txy_2D'), axis xy equal tight, set(gca, 'fontsize',FS, 'linewidth',1.3)
 cb=colorbar;
@@ -140,7 +140,7 @@ set(gca,'fontname','Courier')
 set(gca,'TickLength',[0,0])
 xlabel('\bf{lx}', 'fontsize',FS)
 ylabel({'\bf{\tau_{shear}}',' ','ly'}, 'fontsize',FS)
-text(0.4,9.3,'e)','fontsize',FS+2,'fontname','Courier','color','w')
+text(0.4,9.3,'(e)','fontsize',FS+2,'fontname','Courier','color','w')
 
 %% 3D
 sp4 = subplot(322);
@@ -185,7 +185,7 @@ set(gca, 'ZTick', [10 nz-5], 'ZTicklabel', [0 10], 'fontsize',FS)
 % text(350,160,0,'lx','fontsize',FS,'fontname','Courier') %ylabel('ly','fontsize',FS)
 zlabel('\bf{lz}','fontsize',FS)
 % title({'Stokes 3D',' '})
-text(250,0,280,'b)','fontsize',FS+2,'fontname','Courier')
+text(250,0,280,'(b)','fontsize',FS+2,'fontname','Courier')
 
 cb = colorbar;
 % cb.Location = 'southoutside';
@@ -248,7 +248,7 @@ set(gca, 'ZTick', [10 nz-5], 'ZTicklabel', [0 10], 'fontsize',FS)
 % text(150,315,0,'ly','fontsize',FS,'fontname','Courier') %xlabel('lx','fontsize',FS)
 % text(350,160,0,'lx','fontsize',FS,'fontname','Courier') %ylabel('ly','fontsize',FS)
 zlabel('\bf{lz}','fontsize',FS)
-text(250,0,280,'d)','fontsize',FS+2,'fontname','Courier')
+text(250,0,280,'(d)','fontsize',FS+2,'fontname','Courier')
 
 cb = colorbar;
 % cb.Location = 'southoutside';
@@ -311,7 +311,7 @@ set(gca, 'ZTick', [10 nz-5], 'ZTicklabel', [0 10], 'fontsize',FS)
 text(150,315,0,'\bf{ly}','fontsize',FS,'fontname','Courier') %xlabel('lx','fontsize',FS)
 text(350,160,0,'\bf{lx}','fontsize',FS,'fontname','Courier') %ylabel('ly','fontsize',FS)
 zlabel('\bf{lz}','fontsize',FS)
-text(250,0,280,'f)','fontsize',FS+2,'fontname','Courier')
+text(250,0,280,'(f)','fontsize',FS+2,'fontname','Courier')
 
 cb = colorbar;
 % cb.Location = 'southoutside';
