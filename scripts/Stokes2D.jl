@@ -1,8 +1,9 @@
-const USE_GPU = haskey(ENV, "USE_GPU") ? parse(Bool, ENV["USE_GPU"]) : false
-const do_viz  = haskey(ENV, "DO_VIZ")  ? parse(Bool, ENV["DO_VIZ"])  : true
-const do_save = haskey(ENV, "DO_SAVE") ? parse(Bool, ENV["DO_SAVE"]) : false
-const nx = haskey(ENV, "NX") ? parse(Int, ENV["NX"]) : 512 - 1
-const ny = haskey(ENV, "NY") ? parse(Int, ENV["NY"]) : 512 - 1
+const use_return  = haskey(ENV, "USE_RETURN" ) ? parse(Bool, ENV["USE_RETURN"] ) : false
+const USE_GPU     = haskey(ENV, "USE_GPU"    ) ? parse(Bool, ENV["USE_GPU"]    ) : false
+const do_viz      = haskey(ENV, "DO_VIZ"     ) ? parse(Bool, ENV["DO_VIZ"]     ) : true
+const do_save     = haskey(ENV, "DO_SAVE"    ) ? parse(Bool, ENV["DO_SAVE"]    ) : false
+const nx          = haskey(ENV, "NX"         ) ? parse(Int , ENV["NX"]         ) : 256 - 1
+const ny          = haskey(ENV, "NY"         ) ? parse(Int , ENV["NY"]         ) : 256 - 1
 ###
 using ParallelStencil
 using ParallelStencil.FiniteDifferences2D
@@ -68,7 +69,7 @@ end
     return
 end
 
-@views function Stokes2D()
+@views function Stokes2D_()
     # Physics
     lx, ly    = 10.0, 10.0  # domain extends
     μs0       = 1.0         # matrix viscosity
@@ -86,6 +87,7 @@ end
     dx, dy    = lx/nx, ly/ny # cell sizes
     max_lxy   = max(lx,ly)
     Vpdτ      = min(dx,dy)*CFL
+    xc, yc, yv = LinRange(dx/2, lx - dx/2, nx), LinRange(dy/2, ly - dy/2, ny), LinRange(0, ly, ny+1)
     # Array allocations
     Pt        = @zeros(nx  ,ny  )
     ∇V        = @zeros(nx  ,ny  )
@@ -151,10 +153,9 @@ end
     @printf("Total steps = %d, err = %1.3e, time = %1.3e sec (@ T_eff = %1.2f GB/s) \n", iter, err, wtime, round(T_eff, sigdigits=2))
     # Visualisation
     if do_viz
-        X, Y, Yv  = dx/2:dx:lx-dx/2, dy/2:dy:ly-dy/2, 0:dy:ly
-        p1 = heatmap(X,  Y, Array(Musτ)', aspect_ratio=1, xlims=(X[1],X[end]), ylims=(Y[1],Y[end]), c=:viridis, title="Pressure")
-        p2 = heatmap(X, Yv, Array(Vy)', aspect_ratio=1, xlims=(X[1],X[end]), ylims=(Yv[1],Yv[end]), c=:viridis, title="Vy")
-        p4 = heatmap(X[2:end-1], Yv[2:end-1], log10.(abs.(Array(Ry)')), aspect_ratio=1, xlims=(X[2],X[end-1]), ylims=(Yv[2],Yv[end-1]), c=:viridis, title="log10(Ry)")
+        p1 = heatmap(xc, yc, Array(Musτ)', aspect_ratio=1, xlims=extrema(xc), ylims=extrema(yc), c=:viridis, title="Pressure")
+        p2 = heatmap(xc, yv, Array(Vy)', aspect_ratio=1, xlims=extrema(xc), ylims=extrema(yv), c=:viridis, title="Vy")
+        p4 = heatmap(xc[2:end-1], yv[2:end-1], log10.(abs.(Array(Ry)')), aspect_ratio=1, xlims=extrema(xc[2:end-1]), ylims=extrema(yv[2:end-1]), c=:viridis, title="log10(Ry)")
         p5 = plot(err_evo2,err_evo1, legend=false, xlabel="# iterations", ylabel="log10(error)", linewidth=2, markershape=:circle, markersize=3, labels="max(error)", yaxis=:log10)
         display(plot(p1, p2, p4, p5))
     end
@@ -164,7 +165,11 @@ end
             println(io, "$(nx) $(ny) $(iter)")
         end
     end
-    return
+    return xc, yc, Pt
 end
 
-Stokes2D()
+if use_return
+    xc, yc, P = Stokes2D_();
+else
+    Stokes2D = begin Stokes2D_(); return; end
+end

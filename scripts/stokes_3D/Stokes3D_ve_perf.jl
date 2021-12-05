@@ -1,10 +1,11 @@
-const USE_GPU = haskey(ENV, "USE_GPU") ? parse(Bool, ENV["USE_GPU"]) : true
-const do_viz  = haskey(ENV, "DO_VIZ")  ? parse(Bool, ENV["DO_VIZ"])  : false
-const do_save = haskey(ENV, "DO_SAVE") ? parse(Bool, ENV["DO_SAVE"]) : false
+const use_return  = haskey(ENV, "USE_RETURN" ) ? parse(Bool, ENV["USE_RETURN"] ) : false
+const USE_GPU     = haskey(ENV, "USE_GPU"    ) ? parse(Bool, ENV["USE_GPU"]    ) : false
+const do_viz      = haskey(ENV, "DO_VIZ"     ) ? parse(Bool, ENV["DO_VIZ"]     ) : false
+const do_save     = haskey(ENV, "DO_SAVE"    ) ? parse(Bool, ENV["DO_SAVE"]    ) : false
 const do_save_viz = haskey(ENV, "DO_SAVE_VIZ") ? parse(Bool, ENV["DO_SAVE_VIZ"]) : false
-const nx = haskey(ENV, "NX") ? parse(Int, ENV["NX"]) : 64 - 1
-const ny = haskey(ENV, "NY") ? parse(Int, ENV["NY"]) : 64 - 1
-const nz = haskey(ENV, "NZ") ? parse(Int, ENV["NZ"]) : 64 - 1
+const nx          = haskey(ENV, "NX"         ) ? parse(Int , ENV["NX"]         ) : 64 - 1
+const ny          = haskey(ENV, "NY"         ) ? parse(Int , ENV["NY"]         ) : 64 - 1
+const nz          = haskey(ENV, "NZ"         ) ? parse(Int , ENV["NZ"]         ) : 64 - 1
 ###
 using ParallelStencil
 using ParallelStencil.FiniteDifferences3D
@@ -112,7 +113,7 @@ end
     return
 end
 
-@views function Stokes3D()
+@views function Stokes3D_()
     # Physics
     lx, ly, lz = 10.0, 10.0, 10.0  # domain extends
     ξ          = 1.0               # Maxwell relaxation time
@@ -135,6 +136,7 @@ end
     max_lxyz   = max(lx,ly,lz)
     Vpdτ       = min(dx,dy,dz)*CFL
     _dx, _dy, _dz = 1.0/dx, 1.0/dy, 1.0/dz
+    xc, yc, zc = LinRange(dx/2, lx-dx/2, nx), LinRange(dy/2, ly-dy/2, ny), LinRange(dz/2, lz-dz/2, nz)
     # Array allocations
     Pt         = @zeros(nx  ,ny  ,nz  )
     dτ_Rho     = @zeros(nx  ,ny  ,nz  )
@@ -230,9 +232,9 @@ end
     @printf("Total iters = %d (%d steps), time = %1.3e sec (@ T_eff = %1.2f GB/s) \n", ittot, nt, wtime, round(T_eff, sigdigits=3))
     # Visualisation
     if do_viz
-        p1 = heatmap(xc, zc, Array(Pt)[:,y_sl,:]', aspect_ratio=1, xlims=(xc[1],xc[end]), zlims=(zc[1],zc[end]), c=:viridis, title="Pressure")
-        p2 = heatmap(xc, zv, Array(Vz)[:,y_sl,:]', aspect_ratio=1, xlims=(xc[1],xc[end]), zlims=(zc[1],zc[end]), c=:viridis, title="Vz")
-        p4 = heatmap(xc[2:end-1], xv[2:end-1], log10.(abs.(Array(Rz)[:,y_sl2,:]')), aspect_ratio=1,  xlims=(xc[2],xc[end-1]), zlims=(zc[2],zc[end-1]), c=:viridis, title="log10(Rz)")
+        p1 = heatmap(xc, zc, Array(Pt)[:,y_sl,:]', aspect_ratio=1, xlims=extrema(xc), zlims=extrema(zc), c=:viridis, title="Pressure")
+        p2 = heatmap(xc, zv, Array(Vz)[:,y_sl,:]', aspect_ratio=1, xlims=extrema(xc), zlims=extrema(zv), c=:viridis, title="Vz")
+        p4 = heatmap(xc[2:end-1], xv[2:end-1], log10.(abs.(Array(Rz)[:,y_sl2,:]')), aspect_ratio=1,  xlims=extrema(xc[2:end-1]), zlims=extrema(zv[2:end-1]), c=:viridis, title="log10(Rz)")
         #p5 = plot(err_evo2,err_evo1, legend=false, xlabel="# iterations", ylabel="log10(error)", linewidth=2, markershape=:circle, markersize=3, labels="max(error)", yaxis=:log10)
         p3 = plot(evo_t, evo_τzz, legend=false, xlabel="time", ylabel="max(τzz)", linewidth=0, markershape=:circle, framestyle=:box, markersize=3)
             #plot!(evo_t, 2.0.*εbg.*μs0.*(1.0.-exp.(.-evo_t.*G./μs0)), linewidth=2.0) # analytical solution
@@ -249,7 +251,11 @@ end
         !ispath("../../out_visu") && mkdir("../../out_visu")
         matwrite("../../out_visu/Stokes_3D_ve_perf.mat", Dict("Pt_3D"=> Array(Pt), "Mus_3D"=> Array(Mus), "Txz_3D"=> Array(τxz), "Vz_3D"=> Array(Vz), "dx_3D"=> dx, "dy_3D"=> dy, "dz_3D"=> dz); compress = true)
     end
-    return
+    return xc, yc, zc, Pt
 end
 
-Stokes3D()
+if use_return
+    xc, yc, zc, P = Stokes3D_();
+else
+    Stokes3D = begin Stokes3D_(); return; end
+end
