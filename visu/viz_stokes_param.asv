@@ -1,0 +1,56 @@
+clear;figure(1);clf;load('roma.mat')
+%setup
+set(gcf,'Units','centimeters','Position',[12 2 12 18],'PaperUnits','centimeters','PaperPosition',[0 0 12 18]);
+% physics and numerics
+lx = 10; ly = 10; lz = 10; nx = 2048;
+% vis
+subs   = 1:3:7;
+vrs    = 1:4:9;
+rems   = 0.5:0.25:1.5;
+nincls = [1 14 46];
+data   = readmatrix('../output/out_Stokes2D_param.txt');
+sz     = [numel(vrs),numel(subs),numel(rems)];
+Vr     = reshape(data(:,1),sz);
+Nsub   = reshape(data(:,2),sz);
+Re     = reshape(data(:,3),sz);
+Iters  = reshape(data(:,4),sz);
+tiledlayout(numel(subs),2,'TileSpacing','compact','Padding','normal')
+for iSub = 1:numel(subs)
+    % results
+    nexttile
+    load(sprintf('../output/VISCR_9/NSUB_%d/REMULT_1.0/Stokes2D.mat',subs(iSub)))
+    dx = dx_2D; xc = dx/2:dx:lx-dx/2; xv = dx:dx:lx-dx;
+    dy = dy_2D; yc = dy/2:dy:ly-dy/2; yv = dy:dy:ly-dy;
+    [Xc,Yc] = meshgrid(xc,yc);
+    dP = Pt_2D + Yc';
+    imagesc(xv,yv,dP');shading flat;axis image;caxis([4.7 5.2])
+    hold on;
+    Vxc = 0.5*(Vx_2D(1:end-1,:)+Vx_2D(2:end,:));
+    Vyc = 0.5*(Vy_2D(:,1:end-1)+Vy_2D(:,2:end));
+    l=streamslice(Xc,Yc,Vxc',Vyc',1);
+    set(l,'Color','k','LineWidth',0.5);
+    hold off;
+    xlim([0 lx]);ylim([0 ly]);
+    yticks([0 ly]); yticklabels({'0','ly'})
+    if iSub == 1; xticks([0 lx]); xticklabels({'0','lx'});else; xticks([]); end
+    cb = colorbar('Location','southoutside'); cb.Label.String = 'p';
+    text(-1.2,0.5,sprintf("%.1f%%",nincls(iSub)*0.5),'Units','normalized','Rotation',90,'HorizontalAlignment','center','VerticalAlignment','middle')
+    set(gca,'FontName','Courier','FontSize',9,'YDir','normal','XAxisLocation','top')%,'ColorScale','log')
+    colormap(gca,roma)
+    % iter count
+    nexttile
+    imagesc(vrs,rems,squeeze(Iters(:,iSub,:))'/nx);shading flat
+    hold on
+    [~,I] = min(squeeze(Iters(:,iSub,:)),[],2);
+    Resc = squeeze(Re(:,iSub,:));
+    plot(vrs,rems(I),'w-o','LineWidth',1,'MarkerSize',2);
+    hold off
+    axis square;caxis([min(Iters(:)) max(Iters(:))]/nx)
+    yticks(0.5:0.5:1.5);ylabel('Re/Re_{opt}')
+    if iSub == 1;xticks(vrs);xlabel('\mu^{inc}_s/\mu^{0}_s');else;xticks([]); end
+    colorbar('Location','southoutside')
+    set(gca,'FontName','Courier','FontSize',9,'YDir','normal','XAxisLocation','top','YAxisLocation','right')
+    colormap(gca,roma)
+    drawnow
+end
+% exportgraphics(gcf,'fig_stokes_multiple_inclusions_systematics.png','Resolution',300)
