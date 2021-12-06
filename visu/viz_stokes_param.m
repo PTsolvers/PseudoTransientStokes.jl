@@ -57,7 +57,7 @@ for ifig = 1:numel(sims)
         hold off
         axis square;caxis([10 50]);
         yticks(0.5:0.5:1.5);ylabel('\bfRe/Re_{opt}')
-        if iSub == 1;xticks(vrs);xlabel('\bf\mu^{0}_s/\mu^{inc}_s');else;xticks([]); end
+        if iSub == 1;xticks(vrs);xlabel('\bflog_{10}(\mu^{0}_s/\mu^{inc}_s)');else;xticks([]); end
         if iSub == numel(subs);cb2=colorbar('Location','southoutside');cb2.Label.String='\bfiter_{tot}/nx';cb2.Label.FontSize=fs;end
         set(gca,'FontName','Courier','FontSize',fs,'YDir','normal','XAxisLocation','top','YAxisLocation','right')
         colormap(gca,flip(roma))
