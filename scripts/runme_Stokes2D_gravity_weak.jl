@@ -14,7 +14,7 @@ static_params = Dict(
     "EBG"         => 0.0,
     "RHOG0"       => 1.0,
     "RHOGI"       => 0.5,
-    "SIMDIR"      => "../output/gravity_weak"
+    "SIMNAME"     => "gravity_weak"
 )
 par_names = Iterators.flatten([typeof(par)<:Tuple ? [par...] : [par] for par ∈ keys(params)])
 for par in Iterators.product(values(params)...)

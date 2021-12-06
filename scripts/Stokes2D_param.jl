@@ -11,7 +11,7 @@ const Re_mlt      = haskey(ENV, "REMULT"     ) ? parse(Float64, ENV["REMULT"    
 const ρg0         = haskey(ENV, "RHOG0"      ) ? parse(Float64, ENV["RHOG0"      ]) : 0.0
 const ρgi         = haskey(ENV, "RHOGI"      ) ? parse(Float64, ENV["RHOGI"      ]) : 0.0
 const εbg         = haskey(ENV, "EBG"        ) ? parse(Float64, ENV["EBG"        ]) : 1.0
-const simdir      = haskey(ENV, "SIMDIR"     ) ?                ENV["SIMDIR"     ]  : "../output"
+const simname     = haskey(ENV, "SIMNAME"    ) ?                ENV["SIMNAME"     ]  : ""
 ###
 using ParallelStencil
 using ParallelStencil.FiniteDifferences2D
@@ -229,13 +229,13 @@ end
         display(plot(p1, p2, p4, p5))
     end
     if do_save_vis && Re_mlt ≈ 1.0 && vrpow == 9 # workaround to avoid saving too much data
-        outdir = joinpath(simdir, "VISCR_$(vrpow)_NSUB_$(nsub)_REMULT_$(Re_mlt)")
+        outdir = joinpath("..", "out_visu", simname, "VISCR_$(vrpow)_NSUB_$(nsub)_REMULT_$(Re_mlt)")
         !ispath(outdir) && mkpath(outdir)
         matwrite(joinpath(outdir,"Stokes2D.mat"), Dict("Pt_2D"=> Array(Pt), "Mus_2D"=> Array(Mus), "Txy_2D"=> Array(τxy), "Txx_2D"=> Array(τxx), "Tyy_2D"=> Array(τyy), "Vx_2D"=> Array(Vx), "Vy_2D"=> Array(Vy), "dx_2D"=> dx, "dy_2D"=> dy); compress = true)
     end
     if do_save
-        !ispath(simdir) && mkpath(simdir)
-        open(joinpath(simdir,"out_Stokes2D_param.txt"),"a") do io
+        !ispath("../output") && mkpath("../output")
+        open("out_Stokes2D_$(simname)_param.txt","a") do io
             println(io, "$(vrpow) $(nsub) $(Re_mlt) $(iter) $(err_V) $(err_∇V)")
         end
     end
