@@ -11,7 +11,7 @@ const Re_mlt      = haskey(ENV, "REMULT"     ) ? parse(Float64, ENV["REMULT"    
 const ρg0         = haskey(ENV, "RHOG0"      ) ? parse(Float64, ENV["RHOG0"      ]) : 0.0
 const ρgi         = haskey(ENV, "RHOGI"      ) ? parse(Float64, ENV["RHOGI"      ]) : 0.0
 const εbg         = haskey(ENV, "EBG"        ) ? parse(Float64, ENV["EBG"        ]) : 1.0
-const simname     = haskey(ENV, "SIMNAME"    ) ?                ENV["SIMNAME"     ]  : ""
+const simname     = haskey(ENV, "SIMNAME"    ) ?                ENV["SIMNAME"    ]  : ""
 ###
 using ParallelStencil
 using ParallelStencil.FiniteDifferences2D

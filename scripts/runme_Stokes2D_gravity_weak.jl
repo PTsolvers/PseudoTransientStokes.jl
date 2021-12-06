@@ -1,8 +1,8 @@
 using DataStructures
 params = OrderedDict(
-    "VISCR"           => 1:4:9,
-    "NSUB"            => 1:3:7,
-    "REMULT"          => 0.25:0.25:1.5
+    "VISCR"  => 1:4:9,
+    "NSUB"   => 1:3:7,
+    "REMULT" => 0.25:0.25:1.5
 )
 static_params = Dict(
     "USE_GPU"     => true,
