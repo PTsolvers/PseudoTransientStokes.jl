@@ -1,6 +1,7 @@
 # PseudoTransientStokes.jl
 
 [![Build Status](https://github.com/PTsolvers/PseudoTransientStokes.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/PTsolvers/PseudoTransientStokes.jl/actions/workflows/CI.yml?query=branch%3Amain)
+[![DOI](https://zenodo.org/badge/344470133.svg)](https://zenodo.org/badge/latestdoi/344470133)
 
 Parallel (multi-) XPU iterative 2D and 3D incompressible Stokes flow solvers with viscous and Maxwell visco-elastic shear rheology. This software is part of the [**PTsolvers project**](https://ptsolvers.github.io/).
 
