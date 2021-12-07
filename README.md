@@ -6,7 +6,7 @@ Parallel (multi-) XPU iterative 2D and 3D incompressible Stokes flow solvers wit
 
 The aim of this project is to provide iterative solvers **assessing the scalability, performance, and robustness of the accelerated pseudo-transient method** with application to Stokes flow and mechancial processes. The solution strategy characterises as semi-iterative, implementing the second-order convergence acceleration as introduced by, e.g., \[[Frankel, 1950](https://doi.org/10.2307/2002770)\].
 
-This repository, together with [PseudoTransientDiffusion.jl](https://github.com/PTsolvers/PseudoTransientDiffusion.jl/), relates to the original research article draft submitted to the _**Journal XXX**_:
+This repository, together with [**PseudoTransientDiffusion.jl**](https://github.com/PTsolvers/PseudoTransientDiffusion.jl/), relates to the original research article draft submitted to the _**Journal XXX**_:
 ```tex
 @article{raess2022,
     title = {{ }},
