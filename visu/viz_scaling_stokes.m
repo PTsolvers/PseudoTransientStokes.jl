@@ -27,7 +27,7 @@ figure(2),clf,set(gcf,'color','white','pos',[1400 10 500 400])
 
 semilogx(Stokes_2D(1,2:end), Stokes_2D(3,2:end)./Stokes_2D(1,2:end)./Stokes_2D(4,2:end),'-o', ...
          Stokes_3D(1,1:end), Stokes_3D(4,1:end)./Stokes_3D(1,1:end)./Stokes_3D(5,1:end),'-o', ...
-         'linewidth',3, 'MarkerFaceColor','k'), axis square, set(gca, 'fontsize',FS, 'linewidth',1.4)
+         'linewidth',3, 'MarkerFaceColor','k'), set(gca, 'fontsize',FS, 'linewidth',1.4)
 ylabel({' ';'\bf{iter_{tot}/nt/nx}'}, 'fontsize',FS)
 ylim([15 20]) % ylim([3 15])
 lg=legend('2D', '3D'); set(lg,'box','off')
