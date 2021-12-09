@@ -62,7 +62,7 @@ mylim2  = [0.959 1.003].*sc;
 mylimx2 = [0.8 3.e3];
 ylab2 = 0.963.*sc;
 
-fig1 = 1;
+fig1 = 0;
 fig2 = 1;
 
 %%
@@ -125,7 +125,8 @@ semilogx(diff_3D_mxpu_volta_2(1,:),diff_3D_mxpu_volta_2(end,:)./single_volta_dif
          diff_3D_mxpu_daint_2(1,:),diff_3D_mxpu_daint_2(end,:)./single_daint_diff.*sc, '-o', ...
         'linewidth',3, 'MarkerFaceColor','k'), set(gca, 'fontsize',FS, 'linewidth',1.4)
 title({'3D nonlinear'; 'diffusion'},'fontsize',FS-2)
-ylabel({' ';'\bf{E} [%]'}, 'fontsize',FS)
+ylabel({' ';'\bf{E}'}, 'fontsize',FS)
+ytickformat('%g\%')
 % lg=legend('Titan Xm', 'Tesla V100 SXM2'); set(lg,'box','off')
 ylim(mylim2)
 xlim(mylimx2)
@@ -156,7 +157,7 @@ pos2 = get(sp2,'position'); set(sp2,'position',[pos2(1)*0.96  pos2(2)*2 pos2(3)*
 
 fig = gcf;
 fig.PaperPositionMode = 'auto';
-% print('fig_parperf3D_all','-dpng','-r300')
+print('fig_parperf3D_all','-dpng','-r300')
 
 end
 
