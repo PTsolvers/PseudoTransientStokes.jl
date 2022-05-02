@@ -1,14 +1,14 @@
 using DataStructures
 params = OrderedDict(
-    "NSUB"   => 1:1:3,
+    "NSUB"   => 1:1:4,
+    "RESOL"  => (127, 255, 511, 1023, 2047)
 )
 static_params = Dict(
-    "USE_GPU"     => false,
-    "GPU_ID"      => 1,
-    "DO_VIZ"      => true,
+    "USE_GPU"     => true,
+    "GPU_ID"      => 7,
+    "DO_VIZ"      => false,
     "DO_SAVE"     => true,
     "DO_SAVE_VIZ" => false,
-    "RESOL"       => 127,
     "SIMNAME"     => "aspect_ratio"
 )
 par_names = Iterators.flatten([typeof(par)<:Tuple ? [par...] : [par] for par ∈ keys(params)])

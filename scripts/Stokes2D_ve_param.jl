@@ -101,16 +101,16 @@ end
     nx        = nsub*(ny+1)-1
     nt        = 5           # number of time steps
     iterMax   = 2e5         # maximum number of pseudo-transient iterations
-    nout      = 200         # error checking frequency
+    nout      = 3*nx        # error checking frequency
     Re        = 5π          # Reynolds number
     r         = 1.0         # Bulk to shear elastic modulus ratio
     CFL       = 0.8/sqrt(2) # CFL number # DEBUG was 0.9
     ε         = 1e-8        # nonlinear absolute tolerence
     # Derived numerics
     dx, dy    = lx/nx, ly/ny # cell sizes
-    max_lxy   = min(lx,ly)
+    max_lxy   = 0.4*min(lx,ly)
     Vpdτ      = min(dx,dy)*CFL
-    xc, yc, yv = LinRange(dx/2, lx - dx/2, nx), LinRange(dy/2, ly - dy/2, ny), LinRange(0, ly, ny+1)
+    xc,yc,yv  = LinRange(dx/2, lx - dx/2, nx), LinRange(dy/2, ly - dy/2, ny), LinRange(0, ly, ny+1)
     # Array allocations
     Pt        = @zeros(nx  ,ny  )
     dτ_Rho    = @zeros(nx  ,ny  )
@@ -170,8 +170,8 @@ end
                 Vmin, Vmax = minimum(Vx), maximum(Vx)
                 Pmin, Pmax = minimum(Pt), maximum(Pt)
                 norm_Rx    = norm(Rx)/(Pmax-Pmin)*lx/sqrt(length(Rx))
-                norm_Ry    = norm(Ry)/(Pmax-Pmin)*lx/sqrt(length(Ry))
-                norm_∇V    = norm(∇V)/(Vmax-Vmin)*lx/sqrt(length(∇V))
+                norm_Ry    = norm(Ry)/(Pmax-Pmin)*ly/sqrt(length(Ry))
+                norm_∇V    = norm(∇V)/(Vmax-Vmin)*ly/sqrt(length(∇V))
                 err = maximum([norm_Rx, norm_Ry, norm_∇V])
                 if isnan(err) error("NaN") end
                 push!(err_evo1, maximum([norm_Rx, norm_Ry, norm_∇V])); push!(err_evo2,iter)
@@ -195,8 +195,10 @@ end
         p5 = scatter(err_evo2, err_evo1, legend=false, xlabel="# iterations", ylabel="log10(error)", linewidth=2, markershape=:circle, markersize=3, framestyle=:box, labels="max(error)", yaxis=:log10)
         p3 = plot(evo_t, evo_τyy , legend=false, xlabel="time", ylabel="max(τyy)", linewidth=0, markershape=:circle, framestyle=:box, markersize=3)
             #plot!(evo_t, 2.0.*εbg.*μs0.*(1.0.-exp.(.-evo_t.*G./μs0)), linewidth=2.0) # analytical solution
-        display(plot(p1, p2, p4, p5, p3))
-        sleep(5)
+        plot(p1, p2, p4, p5, p3)
+        outdir = joinpath("..", "out_visu", "NSUB_$(nsub)_RESOL_$(ny)")
+        !ispath("../out_visu") && mkdir("../out_visu")
+        png(outdir)
     end
     if do_save
         !ispath("../output") && mkdir("../output")
