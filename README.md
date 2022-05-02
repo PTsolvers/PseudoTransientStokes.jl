@@ -5,13 +5,19 @@
 
 Parallel (multi-) XPU iterative 2D and 3D incompressible Stokes flow solvers with viscous and Maxwell visco-elastic shear rheology. This software is part of the [**PTsolvers project**](https://ptsolvers.github.io/).
 
-The aim of this project is to provide iterative solvers **assessing the scalability, performance, and robustness of the accelerated pseudo-transient method** with application to Stokes flow and mechancial processes. The solution strategy characterises as semi-iterative, implementing the second-order convergence acceleration as introduced by, e.g., \[[Frankel, 1950](https://doi.org/10.2307/2002770)\].
+The aim of this project is to provide iterative solvers **assessing the scalability, performance, and robustness of the accelerated pseudo-transient method** with application to Stokes flow and mechancial processes. The solution strategy characterises as semi-iterative, implementing the second-order convergence acceleration as introduced by, e.g., [Frankel (1950)](https://doi.org/10.2307/2002770).
 
-This repository, together with [**PseudoTransientDiffusion.jl**](https://github.com/PTsolvers/PseudoTransientDiffusion.jl/), relates to the original research article draft submitted to the _**Journal XXX**_:
+This repository, together with [**PseudoTransientDiffusion.jl**](https://github.com/PTsolvers/PseudoTransientDiffusion.jl/), relates to the original research article draft submitted to the _**Geoscientific Model Development**_ journal:
 ```tex
-@article{raess2022,
-    title = {{ }},
-    journal = {Journal XXX}
+@Article{raess2022,
+    AUTHOR = {R\"ass, L. and Utkin, I. and Duretz, T. and Omlin, S. and Podladchikov, Y. Y.},
+    TITLE = {Assessing the robustness and scalability of the accelerated pseudo-transient method towards exascale computing},
+    JOURNAL = {Geoscientific Model Development Discussions},
+    VOLUME = {2022},
+    YEAR = {2022},
+    PAGES = {1--46},
+    URL = {https://gmd.copernicus.org/preprints/gmd-2021-411/},
+    DOI = {10.5194/gmd-2021-411}
 }
 ```
 
