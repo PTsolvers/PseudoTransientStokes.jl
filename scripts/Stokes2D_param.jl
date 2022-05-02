@@ -17,6 +17,7 @@ using ParallelStencil
 using ParallelStencil.FiniteDifferences2D
 @static if USE_GPU
     @init_parallel_stencil(CUDA, Float64, 2)
+    CUDA.device!(gpu_id) # Set CUDA device
 else
     @init_parallel_stencil(Threads, Float64, 2)
 end
@@ -136,8 +137,6 @@ end
 @views function Stokes2D()
     # Set random seed for reproducibility
     Random.seed!(1855 + nsub)
-    # Set CUDA device
-    CUDA.device!(gpu_id)
     # Physics
     lx, ly    = 10.0, 10.0          # domain extends
     μs0       = 1.0                 # matrix viscosity
@@ -235,7 +234,7 @@ end
     end
     if do_save
         !ispath("../output") && mkpath("../output")
-        open("out_Stokes2D_$(simname)_param.txt","a") do io
+        open("../output/out_Stokes2D_$(simname)_param.txt","a") do io
             println(io, "$(vrpow) $(nsub) $(Re_mlt) $(iter) $(err_V) $(err_∇V)")
         end
     end
