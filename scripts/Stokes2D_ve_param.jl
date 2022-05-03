@@ -100,8 +100,8 @@ end
     # Numerics
     nx        = nsub*(ny+1)-1
     nt        = 5           # number of time steps
-    iterMax   = 30*nx       # maximum number of pseudo-transient iterations
-    nout      = 3*nx        # error checking frequency
+    iterMax   = 60*nx       # maximum number of pseudo-transient iterations
+    nout      = 2*nx        # error checking frequency
     Re        = 5π          # Reynolds number
     r         = 1.0         # Bulk to shear elastic modulus ratio
     CFL       = 0.87/sqrt(2) # CFL number # DEBUG was 0.9
