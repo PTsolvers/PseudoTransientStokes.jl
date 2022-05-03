@@ -100,15 +100,15 @@ end
     # Numerics
     nx        = nsub*(ny+1)-1
     nt        = 5           # number of time steps
-    iterMax   = 2e5         # maximum number of pseudo-transient iterations
+    iterMax   = 30*nx       # maximum number of pseudo-transient iterations
     nout      = 3*nx        # error checking frequency
     Re        = 5π          # Reynolds number
     r         = 1.0         # Bulk to shear elastic modulus ratio
-    CFL       = 0.8/sqrt(2) # CFL number # DEBUG was 0.9
+    CFL       = 0.87/sqrt(2) # CFL number # DEBUG was 0.9
     ε         = 1e-8        # nonlinear absolute tolerence
     # Derived numerics
     dx, dy    = lx/nx, ly/ny # cell sizes
-    max_lxy   = 0.4*min(lx,ly)
+    max_lxy   = 0.4/nsub*min(lx,ly)
     Vpdτ      = min(dx,dy)*CFL
     xc,yc,yv  = LinRange(dx/2, lx - dx/2, nx), LinRange(dy/2, ly - dy/2, ny), LinRange(0, ly, ny+1)
     # Array allocations
@@ -179,7 +179,7 @@ end
             end
         end
         ittot += iter; t += dt
-        push!(evo_t, t); push!(evo_τyy, maximum(τyy))
+        # push!(evo_t, t); push!(evo_τyy, maximum(τyy))
     end
     # Performance
     wtime    = Base.time() - wtime0
