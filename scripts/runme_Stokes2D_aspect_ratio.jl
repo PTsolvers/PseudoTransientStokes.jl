@@ -1,13 +1,14 @@
 using DataStructures
 params = OrderedDict(
-    "NSUB"   => 1:1:4,
+    # "NSUB"   => (1,2,4,8),
+    # "RESOL"  => (127, 255, 511, 1023, 2047)
+    "FACT"   => (0.6, 0.5, 0.4, 0.3, 0.2, 0.1),
+    "NSUB"   => (1, 2, 4, 8),
     "RESOL"  => (127, 255, 511, 1023, 2047)
-    # "NSUB"   => 4,
-    # "RESOL"  => (2047)
 )
 static_params = Dict(
     "USE_GPU"     => true,
-    "GPU_ID"      => 5,
+    "GPU_ID"      => 7,
     "DO_VIZ"      => false,
     "DO_SAVE"     => true,
     "DO_SAVE_VIZ" => false,

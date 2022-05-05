@@ -6,6 +6,7 @@ const gpu_id      = haskey(ENV, "GPU_ID"     ) ? parse(Int , ENV["GPU_ID"]     )
 const ny          = haskey(ENV, "RESOL"      ) ? parse(Int , ENV["RESOL"]      ) : 256 - 1
 const nsub        = haskey(ENV, "NSUB"       ) ? parse(Int , ENV["NSUB"]       ) : 1
 const simname     = haskey(ENV, "SIMNAME"    ) ?             ENV["SIMNAME"]      : ""
+const fact        = haskey(ENV, "FACT"       ) ? parse(Float64, ENV["FACT"]    ) : 1.0
 ###
 using ParallelStencil
 using ParallelStencil.FiniteDifferences2D
@@ -28,8 +29,8 @@ end
 end
 
 macro Mu_eff() esc(:(1.0/(1.0/@all(Musτ) + 1.0/(G*dt)))) end
-@parallel function compute_iter_params!(dτ_Rho::Data.Array, Gdτ::Data.Array, Musτ::Data.Array, Vpdτ::Data.Number, G::Data.Number, dt::Data.Number, Re::Data.Number, r::Data.Number, max_lxy::Data.Number)
-    @all(dτ_Rho) = Vpdτ*max_lxy/Re/@Mu_eff()
+@parallel function compute_iter_params!(dτ_Rho::Data.Array, Gdτ::Data.Array, Musτ::Data.Array, Vpdτ::Data.Number, G::Data.Number, dt::Data.Number, Re::Data.Number, r::Data.Number, min_lxy::Data.Number)
+    @all(dτ_Rho) = Vpdτ*min_lxy/Re/@Mu_eff()
     @all(Gdτ)    = Vpdτ^2/@all(dτ_Rho)/(r+2)
     return
 end
@@ -100,15 +101,16 @@ end
     # Numerics
     nx        = nsub*(ny+1)-1
     nt        = 5           # number of time steps
-    iterMax   = 60*nx       # maximum number of pseudo-transient iterations
-    nout      = 2*nx        # error checking frequency
+    iterMax   = 100nx        # maximum number of pseudo-transient iterations
+    nout      = 1nx         # error checking frequency
     Re        = 5π          # Reynolds number
     r         = 1.0         # Bulk to shear elastic modulus ratio
     CFL       = 0.87/sqrt(2) # CFL number # DEBUG was 0.9
-    ε         = 1e-8        # nonlinear absolute tolerence
+    ε         = 1e-6        # nonlinear absolute tolerence
     # Derived numerics
     dx, dy    = lx/nx, ly/ny # cell sizes
-    max_lxy   = 0.4/nsub*min(lx,ly)
+    # min_lxy   = 0.4/nsub*min(lx,ly)
+    min_lxy   = fact*min(lx,ly)
     Vpdτ      = min(dx,dy)*CFL
     xc,yc,yv  = LinRange(dx/2, lx - dx/2, nx), LinRange(dy/2, ly - dy/2, ny), LinRange(0, ly, ny+1)
     # Array allocations
@@ -150,7 +152,7 @@ end
     @parallel (1:size(Musτ,2)) bc_x!(Musτ)
     @parallel (1:size(Musτ,1)) bc_y!(Musτ)
     # Time loop
-    @parallel compute_iter_params!(dτ_Rho, Gdτ, Musτ, Vpdτ, G, dt, Re, r, max_lxy)
+    @parallel compute_iter_params!(dτ_Rho, Gdτ, Musτ, Vpdτ, G, dt, Re, r, min_lxy)
     t=0.0; ittot=0; evo_t=[]; evo_τyy=[]; err_evo1=[]; err_evo2=[]; err=2*ε
     for it = 1:nt
         err=2*ε; iter=0
@@ -203,7 +205,7 @@ end
     if do_save
         !ispath("../output") && mkdir("../output")
         open("../output/out_Stokes2D_ve_$(simname)_param.txt","a") do io
-            println(io, "$(nx) $(ny) $(nsub) $(ittot) $(nt) $(err)")
+            println(io, "$(nx) $(ny) $(nsub) $(fact) $(ittot) $(nt) $(err)")
         end
     end
     if do_save_viz
