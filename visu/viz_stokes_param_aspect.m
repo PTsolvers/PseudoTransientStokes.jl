@@ -10,7 +10,7 @@ resol    = [127, 255, 511, 1023, 2047];
 % vis
 for ifig = 1:numel(sims)
     figure(ifig);clf
-    set(gcf,'Units','centimeters','Position',[(5+13*(ifig-1)) 2 12 18],'PaperUnits','centimeters','PaperPosition',[0 0 12 18]);
+    set(gcf,'Units','centimeters','Position',[(5+13*(ifig-1)) 2 8 18],'PaperUnits','centimeters','PaperPosition',[0 0 8 18]);
     data   = readmatrix(sprintf('../output/out_Stokes2D_ve_%s_param.txt',sims{ifig}));
 %     data   = data(:,2:end);
     sz     = [numel(fact),numel(subs),numel(resol)];
@@ -24,12 +24,12 @@ for ifig = 1:numel(sims)
     for iSub = 1:numel(resol)
         nexttile
         plot(min(iters(:,:,iSub))./nt./min(nx(:,:,iSub)),'-o','LineWidth',1.6,'MarkerSize',3)
-        xlim([0.9 4.1]); ylim([6 18]);
+        xlim([0.9 4.1]); ylim([6 20]);
         yticks([8 12 16]); yticklabels([8 12 16])
         if iSub == numel(resol);xticks(1:4);xticklabels(subs);xlabel('\bfaspect ratio (lx/ly)');else; xticklabels([]); end
-        text(0.02,0.84,['\bf(' char('a'+iSub-1) ')'],'Units','normalized','FontName','Courier')
-        text(0.75,0.84,['\bfny = ' num2str(resol(iSub))],'Units','normalized','FontName','Courier')
-        set(gca,'FontName','Courier','FontSize',fs,'YDir','normal','XAxisLocation','bottom')
+        text(0.02,0.88,['\bf(' char('a'+iSub-1) ')'],'Units','normalized','FontName','Courier')
+        text(0.63,0.88,['\bfny = ' num2str(resol(iSub))],'Units','normalized','FontName','Courier')
+        set(gca,'FontName','Courier','FontSize',fs,'YDir','normal','XAxisLocation','bottom','LineWidth',0.8)
         if iSub == 3; ylabel('\bfiter_{tot}/nt/nx'); end
         drawnow
     end
