@@ -136,7 +136,6 @@ end
     b_width    = (8, 4, 4)         # boundary width for comm/comp overlap
     # Derived numerics
     me, dims   = init_global_grid(nx, ny, nz) # MPI initialisation
-    @static if USE_GPU select_device() end    # select one GPU per MPI local rank (if >1 GPU per node)
     dx, dy, dz = lx/nx_g(), ly/ny_g(), lz/nz_g()      # cell sizes
     max_lxyz   = max(lx,ly,lz)
     Vpdτ       = min(dx,dy,dz)*CFL
@@ -265,11 +264,11 @@ end
     if (me==0) @printf("Total iters = %d (%d steps), time = %1.3e sec (@ T_eff = %1.2f GB/s) \n", ittot, nt, wtime, round(T_eff, sigdigits=2)) end
     # Visualisation
     if do_viz || do_save_viz
-        Pt_inn .= inn(Pt);   gather!(Pt_inn, Pt_v)
-        Vz_inn .= av_zi(Vz); gather!(Vz_inn, Vz_v)
-        Rz_inn .= av_za(Rz); gather!(Rz_inn, Rz_v)
-        Mus_inn.= inn(Mus);  gather!(Mus_inn, Mus_v)
-        τxz_inn.= av_xza(τxz); gather!(τxz_inn, τxz_v)
+        Pt_inn .= Array(inn(Pt));   gather!(Pt_inn, Pt_v)
+        Vz_inn .= Array(av_zi(Vz)); gather!(Vz_inn, Vz_v)
+        Rz_inn .= Array(av_za(Rz)); gather!(Rz_inn, Rz_v)
+        Mus_inn.= Array(inn(Mus));  gather!(Mus_inn, Mus_v)
+        τxz_inn.= Array(av_xza(τxz)); gather!(τxz_inn, τxz_v)
         if me==0 && do_viz
             p1 = heatmap(Xi_g, Zi_g, Pt_v[:,y_sl,:]', aspect_ratio=1, xlims=(Xi_g[1],Xi_g[end]), zlims=(Zi_g[1],Zi_g[end]), c=:viridis, title="Pressure")
             p2 = heatmap(Xi_g, Zi_g, Vz_v[:,y_sl,:]', aspect_ratio=1, xlims=(Xi_g[1],Xi_g[end]), zlims=(Zi_g[1],Zi_g[end]), c=:viridis, title="Vz")
